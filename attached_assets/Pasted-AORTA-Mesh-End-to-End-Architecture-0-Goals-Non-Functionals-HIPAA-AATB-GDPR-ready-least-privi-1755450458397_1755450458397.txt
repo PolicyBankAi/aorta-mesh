@@ -1,0 +1,365 @@
+AORTA Mesh™ — End-to-End Architecture
+0) Goals & Non-Functionals
+
+HIPAA/AATB/GDPR-ready, least-privilege, full auditability
+
+Federated: PHI stays local; only minimum-necessary claims shared
+
+HA & DR: Multi-AZ, RPO ≤ 5 min, RTO ≤ 60 min
+
+Scale: 10k concurrent users, 100k+ cases/yr, TB-scale docs
+
+Extensible: connector marketplace; rules without redeploys
+
+1) Deployment Topologies
+
+SaaS multi-tenant (default): per-tenant encryption keys; tenant isolation at DB row + KMS level
+
+Managed appliance / on-prem: same services via Helm on customer K8s
+
+Hybrid federation: each org runs a “Node” (lightweight gateway + storage) that exchanges verifiable claims only
+
+2) Logical Architecture (high level)
+[Users/Devices]
+   │  SSO (OIDC/SAML)
+   ▼
+┌──────────┐     WAF/Rate Limit     ┌───────────────────────────┐
+│ Next.js  │ ─────────────────────► │  API Gateway / BFF (FastAPI)
+└──────────┘                        └───────────────────────────┘
+                                       │
+             ┌──────────────────────────┼──────────────────────────────────────────────┐
+             │                          │                                              │
+     ┌─────────────┐            ┌────────────────┐                              ┌───────────────┐
+     │ Case/Passport│           │ Smart Forms Svc│                              │ QA Engine     │
+     └─────────────┘            └────────────────┘                              └───────────────┘
+             │                          │                                              │
+     ┌─────────────┐            ┌────────────────┐                              ┌───────────────┐
+     │ Chain-of-   │            │ Consent Svc    │                              │ Audit Binder  │
+     │ Custody Svc │            └────────────────┘                              └───────────────┘
+     └─────────────┘
+             │                          │                                              │
+     ┌────────────────┐          ┌────────────────┐                              ┌───────────────┐
+     │ Document Svc   │◄─AV Scan │ OCR/Parsing    │                              │ VC/DID Issuer │
+     │ (S3/MinIO)     │          └────────────────┘                              └───────────────┘
+     └────────────────┘
+             │                          │                                              │
+             ├────────► Event Bus (Kafka/Redpanda) ◄───────────────┤
+             │                          │                           │
+        ┌────────┐                ┌───────────┐                 ┌───────────┐
+        │ Redis  │                │ Postgres  │                 │ OpenSearch│
+        └────────┘                └───────────┘                 └───────────┘
+
+                 Observability: Prometheus + Grafana + Loki/ELK
+                 Secrets/KMS: Vault/HSM + per-tenant KEKs
+                 IoT ingress: MQTT Bridge → Event Bus → Cold-chain svc
+                 Connectors: FHIR/HL7, LIS/LIMS, courier APIs (via Connector Hub)
+
+3) Service Catalog (containers/microservices)
+
+API Gateway / BFF (FastAPI)
+
+JWT validation, request shaping, multi-tenant routing, feature flags
+
+Rate limiting, idempotency keys, OpenAPI spec for all endpoints
+
+Case/Passport Service
+
+Creates/maintains canonical Case Passport; issues signed summaries for sharing
+
+Field-level encryption; emits case.updated events for indexing/QA
+
+Smart Forms Service
+
+JSON-schema + rules per jurisdiction (FDA/AATB/UNOS/EU)
+
+Versioned schema registry; form renderer; validation webhooks
+
+QA Engine
+
+Rules runtime (deterministic) + ML assist (OCR/NLP heuristics)
+
+Scores severity; creates discrepancy.* events; human-in-the-loop resolution API
+
+Chain-of-Custody Service
+
+Append-only ledger (hash-chained rows) of custody/temperature/location/sign-offs
+
+MQTT → ingestion → normalization; supports manual entries with e-sign
+
+Consent Service
+
+eConsent templates (multi-language), signer identity verification, revocation propagation
+
+Purpose-based access tokens (“treatment”, “QA”, “audit”) with expirations
+
+Document Service
+
+Chunked uploads, ClamAV scan, OCR queue, durable storage (S3/MinIO)
+
+Renditions (PDF/A), redaction pipeline, page-level text index
+
+OCR/Parsing Service
+
+PDFMiner/textract/Docx parsing + Tesseract (local) or pluggable cloud OCR
+
+Field extraction with templates; confidence scores back to QA
+
+Audit Binder Service
+
+Deterministic binder compiler (PDF) + cryptographic manifest; watermarking
+
+“Timeboxed snapshot” of case with proofs (signatures, hash of artifacts)
+
+VC/DID Issuer (Verifiable Credentials)
+
+Issues W3C VCs describing case facts; DID method choice (ion/key)
+
+Verifier endpoint for external partners; no PHI leakage—claims only
+
+Connector Hub
+
+FHIR/HL7 adapters, LIS/LIMS integrations, courier APIs (label/track), EHR push/pull
+
+Mappings maintained in config repo; runs in sandboxed workers
+
+IoT/Cold-Chain Service
+
+Device registry, calibration metadata, anomaly detection; binds telemetry to case lots
+
+Search/Index Service
+
+OpenSearch indexers for cases, docs, events; PHI-aware redaction; tenant-scoped queries
+
+Notification Service
+
+Email/SMS/in-app; templates; escalation policies; on-call schedules
+
+Admin & Analytics
+
+Tenant config, roles/policies, metrics (TAT, error rate, audit readiness score)
+
+4) Data Stores & Models
+
+Postgres (row-level security; all tables include tenant_id)
+
+cases(id, tenant_id, type, status, donor_ref, created_at, updated_at, hash)
+
+case_roles(case_id, user_id, role, expires_at)
+
+documents(id, case_id, kind, uri, sha256, mime, size, ocr_status, pii_map)
+
+forms(id, case_id, schema_id, data_jsonb, version, status)
+
+discrepancies(id, case_id, source, path, severity, rule_id, status, assignee_id)
+
+coc_events(id, case_id, actor_id, action, location, temp_c, ts, prev_hash, hash)
+
+consents(id, case_id, template_id, subject, scope, signed_at, revoked_at)
+
+vc_credentials(id, case_id, holder_did, claims_jsonb, issued_at, expires_at)
+
+audit_exports(id, case_id, standard, uri, sha256, generated_at)
+
+connectors(id, type, config_jsonb, status)
+
+iot_readings(device_id, case_id, metric, value, ts)
+
+users(id, org_id, sub, attrs_jsonb) / policies(id, expression)
+
+Object Storage (S3/MinIO)
+
+Buckets: docs/<tenant>/..., binders/<tenant>/..., renditions/<tenant>/...
+
+SSE-KMS; lifecycle to Glacier/Deep Archive as policy
+
+OpenSearch
+
+Indices: cases_idx, docs_idx, events_idx (PII-aware analyzers, per-tenant filters)
+
+Redis
+
+Sessions, rate limits, short-lived shares, job queues
+
+5) Eventing & Topics (Kafka/Redpanda)
+
+case.created|updated|shared|revoked
+
+doc.uploaded|scanned|ocr.completed
+
+form.submitted|validated|invalid
+
+discrepancy.raised|resolved
+
+coc.appended|anomaly.detected
+
+consent.signed|revoked
+
+audit.exported
+
+vc.issued|verified
+
+6) Identity, AuthZ, Privacy
+
+IdP: Azure AD/Entra, Okta, or Keycloak; OIDC/SAML; SCIM for provisioning
+
+AuthZ: RBAC + ABAC (attributes: role, purpose, jurisdiction, case role)
+
+Field-level encryption for high-risk PHI (donor_name, address, etc.)
+
+Break-glass with reason codes, dual approval, heightened audit
+
+Data residency tagging (US/EU/CA) → storage & processing pinned to region
+
+KMS/HSM: per-tenant KEKs; envelope keys for objects; 90-day rotation
+
+7) Networking & Security
+
+Private VPCs, Zero-Trust service mesh (mTLS via Istio/Linkerd)
+
+WAF + DDoS protection, mutual TLS for Node↔Node federation
+
+ClamAV + file type allow-list; content disarm & reconstruction (CDR) optional
+
+Egress allow-listing; webhook signing; OAuth client secrets in Vault
+
+Continuous vulnerability scans (Snyk/Trivy), image signing (Cosign)
+
+8) Observability & Ops
+
+Prometheus (metrics), Grafana (dashboards), Loki/ELK (logs)
+
+Trace: OpenTelemetry → Tempo/Jaeger
+
+SLOs: API p95 < 200ms, OCR job p95 < 2m, binder compile p95 < 30s
+
+Runbooks, synthetic probes, chaos drills quarterly
+
+9) HA/DR & Backups
+
+Multi-AZ K8s; Postgres with streaming replicas + Patroni
+
+S3 versioning; daily full + 5-min WAL shipping; quarterly restore tests
+
+Cross-region async mirror for OpenSearch; Redis with AOF
+
+RPO 5 min / RTO 60 min validated via DR playbooks
+
+10) CI/CD & Environments
+
+Git monorepo (Nx/Turbo) or polyrepo; branch protections; IaC with Terraform
+
+PR checks: unit/integration, contract tests, SAST/DAST, SBOM
+
+Progressive delivery: canaries + feature flags (LaunchDarkly/Unleash)
+
+Envs: Dev → Stage (masked data) → Prod; seed synthetic cases for e2e
+
+11) Key API Surfaces (examples)
+
+Cases
+
+POST /v1/cases create
+
+GET /v1/cases/{id} read
+
+POST /v1/cases/{id}/share → issues VC with scoped claims & expiry
+
+Documents
+
+POST /v1/cases/{id}/documents (signed URL)
+
+GET /v1/documents/{doc_id} (token-gated; redaction options)
+
+Smart Forms
+
+GET /v1/forms/schemas?jurisdiction=FDA
+
+POST /v1/cases/{id}/forms/{schema_id} → validate & persist
+
+QA
+
+GET /v1/cases/{id}/discrepancies
+
+POST /v1/discrepancies/{id}/resolve (comment, attachment, code)
+
+Chain-of-Custody
+
+POST /v1/cases/{id}/coc (action, signer, temp, location)
+
+Audit Binder
+
+POST /v1/cases/{id}/binder?standard=AATB → async job → URL
+
+12) Major Workflows (sequence)
+
+A) Case Intake (paper → structured)
+
+User uploads PDFs → Doc Svc stores, scans, enqueues OCR
+
+OCR extracts fields → QA Engine cross-checks vs schema
+
+Smart Forms auto-populate; user reviews; case.created event
+
+Search indexed; dashboard updates
+
+B) Consent Capture
+
+Coordinator selects template & language → signer link (OTP/IDV)
+
+Signer completes; Consent Svc seals document + VC claim
+
+Case Passport updated; access propagated
+
+C) Chain-of-Custody w/ IoT
+
+Device sends MQTT telemetry → Cold-chain Svc binds to case/lot
+
+Anomaly? QA Engine raises discrepancy.raised (critical)
+
+Resolution recorded; ledger hashes updated
+
+D) External Sharing (VC)
+
+Case Svc composes minimum-necessary claim set → VC Issuer signs
+
+Partner verifies at /vc/verify endpoint—no PHI pull required
+
+E) Audit Day
+
+Auditor selects standard → Binder Svc snapshots case + proofs
+
+Export sealed, hashed, logged; downloadable tokenized link
+
+13) Governance & Compliance
+
+Policy-as-code (OPA) for data use; purpose binding logged & enforced
+
+DPIAs for nodes/regions; data retention rules by jurisdiction
+
+Vendor risk management for connectors; BAA where needed
+
+Access reviews quarterly; anomaly alerts on unusual PHI queries
+
+14) Sizing (initial, SaaS region)
+
+K8s: 6–8 m5.xlarge equivalents (autoscale to 20)
+
+Postgres: db.r6g.2xlarge (read replica x1)
+
+OpenSearch: r6g.large.search (3 data, 3 master)
+
+Redis: cache.r6g.large (HA)
+
+Kafka/Redpanda: 3 brokers (medium)
+
+MinIO/S3: start with 20 TB, IA tier after 90 days
+
+15) Roadmap Hooks
+
+Privacy-preserving record linkage (Bloom filters) for cross-org dedupe
+
+Differential privacy for analytics exports
+
+UHID/UDI label verification with handheld scanners
+
+Native mobile (offline-first) for field recovery teams

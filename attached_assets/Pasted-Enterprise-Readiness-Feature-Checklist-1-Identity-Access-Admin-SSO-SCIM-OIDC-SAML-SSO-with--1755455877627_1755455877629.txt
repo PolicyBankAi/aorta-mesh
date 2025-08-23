@@ -1,0 +1,149 @@
+Enterprise-Readiness Feature Checklist
+1) Identity, Access, & Admin
+
+SSO + SCIM: OIDC/SAML SSO with Just-In-Time provisioning; SCIM 2.0 for user/group lifecycle.
+Accept: Map IdP groups → app roles; de-provision within 5 minutes.
+
+RBAC + ABAC + SoD: Role-based plus attribute-based rules (jurisdiction, purpose, case role); Separation-of-Duties policies (e.g., creator ≠ approver).
+Accept: Policy unit tests; deny-by-default; policy change audit log.
+
+Delegated Administration: Org admins manage users, API keys, tenants, and data residency from the UI.
+
+Granular Entitlements: Feature flags/limits per tenant (e.g., connector access, binder export).
+
+2) Data Security & Privacy
+
+Key Management: Per-tenant KEKs in KMS/HSM; envelope encryption for objects; 90-day rotation.
+
+Field-Level Encryption: Encrypt high-risk PHI columns (name, address, SSN), searchable via deterministic tokens.
+
+PII-Aware Logging: Structured logs with PHI redaction; sampling; debug log gate with dual approval.
+
+Data Residency Controls: Pin storage/processing to region (US/EU/CA); block cross-region copies.
+
+DLP & Redaction Profiles: Auto-redact faces, barcodes, names on export; export profiles (Audit, Legal, External share).
+
+Privacy Notices & Consent Ledger: Immutable record of consent scope, language, and revocations; exportable for DPIA.
+
+3) Compliance & Governance
+
+BAA/DPA Pack: Standard Business Associate Agreement + Data Processing Addendum templates.
+
+Policy-as-Code: OPA/Rego policies enforcing minimum-necessary access and purpose binding; CI tests for policies.
+
+Retention & Legal Hold: Per-tenant retention schedules (e.g., 7/10/25 years); immutable legal hold with UI & API.
+
+eDiscovery & Audit API: Search/export case artifacts + event logs as evidentiary package (JSON + PDF/A) with hash manifest.
+
+Validation Package (GxP-style): URS/FRS/DS, IQ/OQ/PQ scripts, traceability matrix—critical for life-sciences audits.
+
+Standards Mapping Library: Versioned rule packs for FDA, AATB, UNOS, EU directives, MHRA; signed updates with release notes.
+
+4) Reliability, HA/DR, & Safety
+
+Multi-AZ HA for API, DB, search, object storage; graceful degradation when OCR/ML down.
+
+Backups & DR: 5-min WAL shipping; point-in-time restore; cross-region cold standby.
+Accept: Quarterly restore drills; RPO ≤ 5 min / RTO ≤ 60 min runbooks.
+
+Tamper-Evident Ledger: Hash-chained chain-of-custody; periodic notarization (public or private anchor).
+
+Circuit Breakers & Bulkheads: Per-connector isolation; exponential backoff; dead-letter queues.
+
+Safe Migrations: Online schema migrations (gh-ost/pg_repack) with shadow reads and canaries.
+
+5) Observability, Security Ops, & Response
+
+Unified Telemetry: Metrics (Prometheus), tracing (OpenTelemetry), logs (Loki/ELK) with tenant tags.
+
+SLOs & Error Budgets: p95 API < 200ms, search < 500ms, binder compile < 30s; SLO dashboards per tenant.
+
+SIEM/SOAR Hooks: Syslog/CEF export; alert webhooks; playbooks for anomalous query volume or mass exports.
+
+Vuln Management: SCA/SAST/DAST in CI; image signing (Cosign); weekly patch cadence; CVE SLA (e.g., CRITICAL < 72h).
+
+Incident Management: In-app “Report an Incident,” on-call rota, PIR template, comms templates, status page integration.
+
+6) API & Integration Hardening
+
+Idempotency & Pagination: Idempotency-Key headers; cursor pagination on all list endpoints.
+
+Webhooks v2: HMAC-signed, replay-protected, retry with exponential backoff, dead-letter and re-drive from UI.
+
+Sandbox & Contract Tests: Public sandbox tenancy; published OpenAPI; backward-compatibility contract tests.
+
+FHIR/HL7 at Scale: Async ingest with ACK/NACK; message reprocessing UI; mapping diffs versioned per partner.
+
+Courier & IoT: Device certificate management (mTLS), enrollment flows, calibration metadata store; offline cache + delayed upload.
+
+7) Product Features for Enterprise Workflows
+
+Four-Eyes Approval: Dual sign-off for critical actions (binder release, consent revocation, ledger edits).
+
+Queue Management: Work queues by role (QA, Intake, Audit) with SLAs, aging, escalation rules.
+
+Bulk Operations: Bulk share, bulk label, bulk binder compile; CSV import wizard with field mapping templates.
+
+Advanced Search: Field, date, geo, and free-text across cases/docs/events; saved searches with shareable links.
+
+Tasking & Notes: Case-scoped tasks, @mentions, and resolution checklists with timestamps.
+
+Watermarking & Classification: Visual banners (Internal/Restricted/External), watermark with user/time/case on all previews/exports.
+
+Accessibility: WCAG 2.2 AA (keyboard flows, contrast, screen-reader labels); time-zone aware timestamps.
+
+Localization: UI + templates with i18n; RTL support; locale-specific legal text.
+
+8) Admin Console & Tenant Controls
+
+Change Management: Config changes trackable with reason codes; scheduled rollout windows per tenant.
+
+Config Snapshots & Diff: View/restore tenant config versions; compare before/after.
+
+Usage Metering: Case- and lot-based counters; connector usage; exportable for billing.
+
+Cost Controls: Soft/hard limits (OCR pages, binder runs); overage notifications.
+
+Custom Domains + BYO-Cert: Tenant vanity domains with ACME or uploaded certs.
+
+9) Packaging, Deployment, & Edge Cases
+
+On-Prem/Air-Gapped Variant: Offline license server, mirrored container registry, update bundles, proxy/NTLM support.
+
+FedRAMP/StateRAMP Track (optional gov path): artifact logging, SC controls, SSP starter.
+
+Zero-Downtime Upgrades: Blue/green or canary; data migrations behind feature flags; rollback plan.
+
+Performance Headroom: Document ingest ≥ 50 pages/sec/region sustained; search p99 < 1.2s at 50M docs.
+
+10) Commercial Readiness
+
+SLAs & Support Plans: 99.9%/99.95% tiers; response times (P1: 15m, P2: 2h); named TAM for Enterprise.
+
+Trials & POCs: Time-boxed pilot mode with redacted exports; easy data export at end of trial.
+
+Pricing Meters: Per case/lot, per binder, per connector; monthly true-up reports.
+
+Security Docs: SIG Lite, CAIQ, pen-test letter, SBOM, architecture & data-flow diagrams, breach notification policy.
+
+11) Documentation & Training
+
+Runbooks: HA/DR, key rotation, webhook troubleshooting, connector mapping.
+
+Admin Guide & Data Dictionary: Full schema + field definitions + lineage.
+
+Validation & UAT Scripts: Step-by-step scenarios for intake, QA, binder, sharing.
+
+End-User Training: Role-based modules (Coordinator, QA, Auditor) + certification quizzes.
+
+12) Testing & Quality Gates
+
+Security Unit Tests: Access matrix tests for every API; snapshot tests for redaction.
+
+Load & Chaos: Soak tests (72h), fault injection (broker down, OCR backlog), failover drills.
+
+Fuzzing: PDF/doc fuzzing on upload path; schema fuzzing for Smart Forms.
+
+Golden Datasets: Synthetic donor/case packs with known edge cases (missing initials, temp excursions, name collisions).
+
+Release Gates: Must pass SLOs, zero P0 bugs, no new HIGH vulns, migration dry-run.

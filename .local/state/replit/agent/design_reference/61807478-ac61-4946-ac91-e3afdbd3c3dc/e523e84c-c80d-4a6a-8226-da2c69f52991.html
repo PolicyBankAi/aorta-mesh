@@ -1,0 +1,520 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full bg-gray-900">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AORTA Mesh™ - Adaptive Organ & Tissue Record & Traceability Architecture</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        'inter': ['Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        'primary': {
+                            50: '#eff6ff',
+                            500: '#3b82f6',
+                            600: '#2563eb',
+                            700: '#1d4ed8',
+                            800: '#1e40af',
+                            900: '#1e3a8a'
+                        }
+                    }
+                }
+            }
+        };
+    </script>
+</head>
+<body class="h-full font-inter bg-gray-900 text-gray-100">
+    <div class="flex h-screen overflow-hidden">
+        <!-- @COMPONENT: Sidebar Navigation -->
+        <!-- Sidebar -->
+        <div class="hidden lg:flex lg:w-64 lg:flex-col">
+            <div class="flex flex-col flex-grow pt-5 pb-4 overflow-y-auto bg-gray-800 border-r border-gray-700">
+                <div class="flex items-center flex-shrink-0 px-4">
+                    <div class="flex items-center">
+                        <div class="w-8 h-8 bg-primary-600 rounded-lg flex items-center justify-center mr-3">
+                            <i class="fas fa-heartbeat text-white text-sm"></i>
+                        </div>
+                        <h1 class="text-xl font-bold text-white">AORTA Mesh™</h1>
+                    </div>
+                </div>
+                <nav class="mt-8 flex-1 px-2 space-y-1">
+                    <!-- @MAP: navigationItems.map(item => ( -->
+                    <a href="#" class="bg-primary-900 text-white group flex items-center px-2 py-2 text-sm font-medium rounded-md" data-mock="true">
+                        <i class="fas fa-chart-line text-primary-300 mr-3 flex-shrink-0 h-4 w-4"></i>
+                        Dashboard
+                    </a>
+                    <a href="#" class="text-gray-300 hover:bg-gray-700 hover:text-white group flex items-center px-2 py-2 text-sm font-medium rounded-md" data-mock="true">
+                        <i class="fas fa-passport text-gray-400 group-hover:text-gray-300 mr-3 flex-shrink-0 h-4 w-4"></i>
+                        Case Passports
+                    </a>
+                    <a href="#" class="text-gray-300 hover:bg-gray-700 hover:text-white group flex items-center px-2 py-2 text-sm font-medium rounded-md" data-mock="true">
+                        <i class="fas fa-clipboard-list text-gray-400 group-hover:text-gray-300 mr-3 flex-shrink-0 h-4 w-4"></i>
+                        Smart Forms
+                    </a>
+                    <a href="#" class="text-gray-300 hover:bg-gray-700 hover:text-white group flex items-center px-2 py-2 text-sm font-medium rounded-md" data-mock="true">
+                        <i class="fas fa-microscope text-gray-400 group-hover:text-gray-300 mr-3 flex-shrink-0 h-4 w-4"></i>
+                        QA Workbench
+                    </a>
+                    <a href="#" class="text-gray-300 hover:bg-gray-700 hover:text-white group flex items-center px-2 py-2 text-sm font-medium rounded-md" data-mock="true">
+                        <i class="fas fa-link text-gray-400 group-hover:text-gray-300 mr-3 flex-shrink-0 h-4 w-4"></i>
+                        Chain-of-Custody
+                    </a>
+                    <a href="#" class="text-gray-300 hover:bg-gray-700 hover:text-white group flex items-center px-2 py-2 text-sm font-medium rounded-md" data-mock="true">
+                        <i class="fas fa-folder-open text-gray-400 group-hover:text-gray-300 mr-3 flex-shrink-0 h-4 w-4"></i>
+                        Audit Binder
+                    </a>
+                    <a href="#" class="text-gray-300 hover:bg-gray-700 hover:text-white group flex items-center px-2 py-2 text-sm font-medium rounded-md" data-mock="true">
+                        <i class="fas fa-plug text-gray-400 group-hover:text-gray-300 mr-3 flex-shrink-0 h-4 w-4"></i>
+                        Connectors
+                    </a>
+                    <!-- @END_MAP )) -->
+                </nav>
+                <div class="flex-shrink-0 flex border-t border-gray-700 p-4">
+                    <div class="flex items-center">
+                        <div class="w-8 h-8 bg-gray-600 rounded-full flex items-center justify-center">
+                            <i class="fas fa-user text-gray-300 text-sm"></i>
+                        </div>
+                        <div class="ml-3">
+                            <p class="text-sm font-medium text-white" data-bind="user.name" data-mock="true">Dr. Sarah Johnson</p>
+                            <p class="text-xs text-gray-300" data-bind="user.role" data-mock="true">QA Officer</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- @END_COMPONENT: Sidebar Navigation -->
+
+        <!-- @COMPONENT: Main Content Area -->
+        <div class="flex flex-col w-0 flex-1 overflow-hidden">
+            <!-- Header -->
+            <div class="relative z-10 flex-shrink-0 flex h-16 bg-gray-800 border-b border-gray-700 shadow">
+                <div class="flex-1 px-4 flex justify-between">
+                    <div class="flex-1 flex">
+                        <div class="w-full flex md:ml-0">
+                            <div class="relative w-full text-gray-400 focus-within:text-gray-600">
+                                <div class="absolute inset-y-0 left-0 flex items-center pointer-events-none">
+                                    <i class="fas fa-search h-5 w-5 ml-3"></i>
+                                </div>
+                                <input class="block w-full h-full pl-10 pr-3 py-2 bg-gray-700 border border-gray-600 rounded-md leading-5 text-gray-300 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-600 focus:border-primary-600 sm:text-sm" placeholder="Search cases, donors, or tissue lots..." type="search" data-mock="true">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="ml-4 flex items-center md:ml-6">
+                        <button class="bg-gray-700 p-1 rounded-full text-gray-400 hover:text-white focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800 focus:ring-white">
+                            <i class="fas fa-bell h-6 w-6"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Main content -->
+            <main class="flex-1 relative overflow-y-auto focus:outline-none bg-gray-900">
+                <div class="py-6">
+                    <div class="max-w-7xl mx-auto px-4 sm:px-6 md:px-8">
+                        <h1 class="text-2xl font-semibold text-white">Dashboard</h1>
+                        <p class="mt-1 text-sm text-gray-400">Overview of your organ and tissue traceability operations</p>
+                    </div>
+                    <div class="max-w-7xl mx-auto px-4 sm:px-6 md:px-8">
+                        <!-- Stats Cards -->
+                        <div class="mt-8 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
+                            <!-- @MAP: statsCards.map(card => ( -->
+                            <div class="bg-gray-800 border border-gray-700 overflow-hidden shadow rounded-lg">
+                                <div class="p-5">
+                                    <div class="flex items-center">
+                                        <div class="flex-shrink-0">
+                                            <i class="fas fa-briefcase-medical h-6 w-6 text-primary-500"></i>
+                                        </div>
+                                        <div class="ml-5 w-0 flex-1">
+                                            <dl>
+                                                <dt class="text-sm font-medium text-gray-400 truncate">Active Cases</dt>
+                                                <dd class="text-lg font-medium text-white" data-bind="stats.activeCases" data-mock="true">1,247</dd>
+                                            </dl>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="bg-gray-800 border border-gray-700 overflow-hidden shadow rounded-lg">
+                                <div class="p-5">
+                                    <div class="flex items-center">
+                                        <div class="flex-shrink-0">
+                                            <i class="fas fa-exclamation-triangle h-6 w-6 text-yellow-500"></i>
+                                        </div>
+                                        <div class="ml-5 w-0 flex-1">
+                                            <dl>
+                                                <dt class="text-sm font-medium text-gray-400 truncate">Flagged Discrepancies</dt>
+                                                <dd class="text-lg font-medium text-white" data-bind="stats.flaggedDiscrepancies" data-mock="true">23</dd>
+                                            </dl>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="bg-gray-800 border border-gray-700 overflow-hidden shadow rounded-lg">
+                                <div class="p-5">
+                                    <div class="flex items-center">
+                                        <div class="flex-shrink-0">
+                                            <i class="fas fa-clock h-6 w-6 text-red-500"></i>
+                                        </div>
+                                        <div class="ml-5 w-0 flex-1">
+                                            <dl>
+                                                <dt class="text-sm font-medium text-gray-400 truncate">Audits Pending</dt>
+                                                <dd class="text-lg font-medium text-white" data-bind="stats.auditsPending" data-mock="true">7</dd>
+                                            </dl>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="bg-gray-800 border border-gray-700 overflow-hidden shadow rounded-lg">
+                                <div class="p-5">
+                                    <div class="flex items-center">
+                                        <div class="flex-shrink-0">
+                                            <i class="fas fa-check-circle h-6 w-6 text-green-500"></i>
+                                        </div>
+                                        <div class="ml-5 w-0 flex-1">
+                                            <dl>
+                                                <dt class="text-sm font-medium text-gray-400 truncate">Compliance Rate</dt>
+                                                <dd class="text-lg font-medium text-white" data-bind="stats.complianceRate" data-mock="true">94.2%</dd>
+                                            </dl>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <!-- @END_MAP )) -->
+                        </div>
+
+                        <!-- Main Dashboard Grid -->
+                        <div class="mt-8 grid grid-cols-1 lg:grid-cols-3 gap-8">
+                            <!-- Recent Activity -->
+                            <div class="lg:col-span-2">
+                                <div class="bg-gray-800 border border-gray-700 shadow rounded-lg">
+                                    <div class="px-6 py-4 border-b border-gray-700">
+                                        <h3 class="text-lg leading-6 font-medium text-white">Recent Activity</h3>
+                                        <p class="mt-1 text-sm text-gray-400">Latest updates across all case passports</p>
+                                    </div>
+                                    <div class="px-6 py-4">
+                                        <div class="flow-root">
+                                            <ul role="list" class="-mb-8">
+                                                <!-- @MAP: recentActivities.map(activity => ( -->
+                                                <li>
+                                                    <div class="relative pb-8">
+                                                        <div class="relative flex space-x-3">
+                                                            <div>
+                                                                <span class="bg-green-500 h-8 w-8 rounded-full flex items-center justify-center ring-8 ring-gray-800">
+                                                                    <i class="fas fa-file-upload h-4 w-4 text-white"></i>
+                                                                </span>
+                                                            </div>
+                                                            <div class="min-w-0 flex-1 pt-1.5 flex justify-between space-x-4">
+                                                                <div>
+                                                                    <p class="text-sm text-gray-300" data-mock="true">New consent form uploaded for case <span class="font-mono text-primary-400">DN-2024-0892</span></p>
+                                                                </div>
+                                                                <div class="text-right text-sm whitespace-nowrap text-gray-400" data-mock="true">
+                                                                    <time datetime="2024-01-15T14:30:00">2 hours ago</time>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </li>
+                                                <li>
+                                                    <div class="relative pb-8">
+                                                        <div class="relative flex space-x-3">
+                                                            <div>
+                                                                <span class="bg-yellow-500 h-8 w-8 rounded-full flex items-center justify-center ring-8 ring-gray-800">
+                                                                    <i class="fas fa-exclamation-triangle h-4 w-4 text-white"></i>
+                                                                </span>
+                                                            </div>
+                                                            <div class="min-w-0 flex-1 pt-1.5 flex justify-between space-x-4">
+                                                                <div>
+                                                                    <p class="text-sm text-gray-300" data-mock="true">QA alert: Temperature discrepancy detected in lot <span class="font-mono text-primary-400">TL-2024-1156</span></p>
+                                                                </div>
+                                                                <div class="text-right text-sm whitespace-nowrap text-gray-400" data-mock="true">
+                                                                    <time datetime="2024-01-15T13:15:00">3 hours ago</time>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </li>
+                                                <li>
+                                                    <div class="relative pb-8">
+                                                        <div class="relative flex space-x-3">
+                                                            <div>
+                                                                <span class="bg-blue-500 h-8 w-8 rounded-full flex items-center justify-center ring-8 ring-gray-800">
+                                                                    <i class="fas fa-check h-4 w-4 text-white"></i>
+                                                                </span>
+                                                            </div>
+                                                            <div class="min-w-0 flex-1 pt-1.5 flex justify-between space-x-4">
+                                                                <div>
+                                                                    <p class="text-sm text-gray-300" data-mock="true">Audit binder completed for case <span class="font-mono text-primary-400">DN-2024-0875</span></p>
+                                                                </div>
+                                                                <div class="text-right text-sm whitespace-nowrap text-gray-400" data-mock="true">
+                                                                    <time datetime="2024-01-15T11:45:00">5 hours ago</time>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </li>
+                                                <li>
+                                                    <div class="relative">
+                                                        <div class="relative flex space-x-3">
+                                                            <div>
+                                                                <span class="bg-purple-500 h-8 w-8 rounded-full flex items-center justify-center ring-8 ring-gray-800">
+                                                                    <i class="fas fa-share-alt h-4 w-4 text-white"></i>
+                                                                </span>
+                                                            </div>
+                                                            <div class="min-w-0 flex-1 pt-1.5 flex justify-between space-x-4">
+                                                                <div>
+                                                                    <p class="text-sm text-gray-300" data-mock="true">Case passport shared with Regional Transplant Center</p>
+                                                                </div>
+                                                                <div class="text-right text-sm whitespace-nowrap text-gray-400" data-mock="true">
+                                                                    <time datetime="2024-01-15T10:20:00">6 hours ago</time>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </li>
+                                                <!-- @END_MAP )) -->
+                                            </ul>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- QA Alerts & Pending Actions -->
+                            <div class="space-y-6">
+                                <!-- QA Alerts -->
+                                <div class="bg-gray-800 border border-gray-700 shadow rounded-lg">
+                                    <div class="px-6 py-4 border-b border-gray-700">
+                                        <h3 class="text-lg leading-6 font-medium text-white">QA Alerts</h3>
+                                        <p class="mt-1 text-sm text-gray-400">Critical issues requiring attention</p>
+                                    </div>
+                                    <div class="px-6 py-4">
+                                        <ul class="space-y-3">
+                                            <!-- @MAP: qaAlerts.map(alert => ( -->
+                                            <li class="flex items-start space-x-3">
+                                                <div class="flex-shrink-0">
+                                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-900 text-red-200" data-mock="true">
+                                                        Critical
+                                                    </span>
+                                                </div>
+                                                <div class="min-w-0 flex-1">
+                                                    <p class="text-sm text-gray-300" data-mock="true">Missing serology results for DN-2024-0901</p>
+                                                    <p class="text-xs text-gray-400" data-mock="true">Expires in 2 days</p>
+                                                </div>
+                                            </li>
+                                            <li class="flex items-start space-x-3">
+                                                <div class="flex-shrink-0">
+                                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-900 text-yellow-200" data-mock="true">
+                                                        Warning
+                                                    </span>
+                                                </div>
+                                                <div class="min-w-0 flex-1">
+                                                    <p class="text-sm text-gray-300" data-mock="true">Temperature log gap in TL-2024-1187</p>
+                                                    <p class="text-xs text-gray-400" data-mock="true">Requires verification</p>
+                                                </div>
+                                            </li>
+                                            <li class="flex items-start space-x-3">
+                                                <div class="flex-shrink-0">
+                                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-900 text-blue-200" data-mock="true">
+                                                        Info
+                                                    </span>
+                                                </div>
+                                                <div class="min-w-0 flex-1">
+                                                    <p class="text-sm text-gray-300" data-mock="true">Chain of custody update pending</p>
+                                                    <p class="text-xs text-gray-400" data-mock="true">Awaiting courier confirmation</p>
+                                                </div>
+                                            </li>
+                                            <!-- @END_MAP )) -->
+                                        </ul>
+                                        <div class="mt-4">
+                                            <button type="button" class="text-sm font-medium text-primary-400 hover:text-primary-300" data-event="click:viewAllAlerts" data-mock="true">
+                                                View all alerts <i class="fas fa-arrow-right ml-1"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Quick Actions -->
+                                <div class="bg-gray-800 border border-gray-700 shadow rounded-lg">
+                                    <div class="px-6 py-4 border-b border-gray-700">
+                                        <h3 class="text-lg leading-6 font-medium text-white">Quick Actions</h3>
+                                    </div>
+                                    <div class="px-6 py-4">
+                                        <div class="space-y-3">
+                                            <button type="button" class="w-full bg-primary-600 border border-transparent rounded-md py-2 px-4 inline-flex justify-center text-sm font-medium text-white shadow-sm hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500" data-event="click:createCasePassport" data-mock="true">
+                                                <i class="fas fa-plus mr-2"></i>
+                                                Create Case Passport
+                                            </button>
+                                            <button type="button" class="w-full bg-gray-700 border border-gray-600 rounded-md py-2 px-4 inline-flex justify-center text-sm font-medium text-gray-300 shadow-sm hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500" data-event="click:uploadDocuments" data-mock="true">
+                                                <i class="fas fa-upload mr-2"></i>
+                                                Upload Documents
+                                            </button>
+                                            <button type="button" class="w-full bg-gray-700 border border-gray-600 rounded-md py-2 px-4 inline-flex justify-center text-sm font-medium text-gray-300 shadow-sm hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500" data-event="click:generateAuditReport" data-mock="true">
+                                                <i class="fas fa-file-pdf mr-2"></i>
+                                                Generate Audit Report
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Case Passport Preview (Modal-style overlay) -->
+                        <div class="mt-8 bg-gray-800 border border-gray-700 shadow rounded-lg" id="case-passport-preview">
+                            <div class="px-6 py-4 border-b border-gray-700">
+                                <div class="flex items-center justify-between">
+                                    <div>
+                                        <h3 class="text-lg leading-6 font-medium text-white">Case Passport Preview</h3>
+                                        <p class="mt-1 text-sm text-gray-400">DN-2024-0892 - Multi-organ donor</p>
+                                    </div>
+                                    <div class="flex items-center space-x-2">
+                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-900 text-green-200" data-mock="true">
+                                            Active
+                                        </span>
+                                        <button type="button" class="text-gray-400 hover:text-white" data-event="click:fullView" data-mock="true">
+                                            <i class="fas fa-external-link-alt h-5 w-5"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="px-6 py-4">
+                                <!-- Tab Navigation -->
+                                <div class="border-b border-gray-700">
+                                    <nav class="-mb-px flex space-x-8">
+                                        <button class="border-transparent text-primary-500 border-primary-500 whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm" data-mock="true">
+                                            Documents
+                                        </button>
+                                        <button class="border-transparent text-gray-400 hover:text-gray-300 hover:border-gray-300 whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm" data-mock="true">
+                                            Chain-of-Custody
+                                        </button>
+                                        <button class="border-transparent text-gray-400 hover:text-gray-300 hover:border-gray-300 whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm" data-mock="true">
+                                            QA Status
+                                        </button>
+                                        <button class="border-transparent text-gray-400 hover:text-gray-300 hover:border-gray-300 whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm" data-mock="true">
+                                            Sharing
+                                        </button>
+                                    </nav>
+                                </div>
+                                
+                                <!-- Tab Content -->
+                                <div class="mt-6">
+                                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                                        <div>
+                                            <h4 class="text-sm font-medium text-gray-300 mb-3">Required Documents</h4>
+                                            <div class="space-y-2">
+                                                <div class="flex items-center justify-between p-3 bg-gray-700 rounded-lg">
+                                                    <div class="flex items-center space-x-3">
+                                                        <i class="fas fa-file-pdf text-red-400"></i>
+                                                        <span class="text-sm text-gray-300" data-mock="true">Consent Form</span>
+                                                    </div>
+                                                    <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-900 text-green-200" data-mock="true">
+                                                        Complete
+                                                    </span>
+                                                </div>
+                                                <div class="flex items-center justify-between p-3 bg-gray-700 rounded-lg">
+                                                    <div class="flex items-center space-x-3">
+                                                        <i class="fas fa-vial text-blue-400"></i>
+                                                        <span class="text-sm text-gray-300" data-mock="true">Serology Results</span>
+                                                    </div>
+                                                    <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-900 text-green-200" data-mock="true">
+                                                        Complete
+                                                    </span>
+                                                </div>
+                                                <div class="flex items-center justify-between p-3 bg-gray-700 rounded-lg">
+                                                    <div class="flex items-center space-x-3">
+                                                        <i class="fas fa-heartbeat text-purple-400"></i>
+                                                        <span class="text-sm text-gray-300" data-mock="true">Medical History</span>
+                                                    </div>
+                                                    <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-900 text-yellow-200" data-mock="true">
+                                                        Pending
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <h4 class="text-sm font-medium text-gray-300 mb-3">Donor Information</h4>
+                                            <div class="bg-gray-700 rounded-lg p-4 space-y-2">
+                                                <div class="flex justify-between">
+                                                    <span class="text-sm text-gray-400">Age:</span>
+                                                    <span class="text-sm text-gray-300" data-bind="donor.age" data-mock="true">34 years</span>
+                                                </div>
+                                                <div class="flex justify-between">
+                                                    <span class="text-sm text-gray-400">Blood Type:</span>
+                                                    <span class="text-sm text-gray-300" data-bind="donor.bloodType" data-mock="true">O+</span>
+                                                </div>
+                                                <div class="flex justify-between">
+                                                    <span class="text-sm text-gray-400">Recovery Date:</span>
+                                                    <span class="text-sm text-gray-300" data-bind="donor.recoveryDate" data-mock="true">2024-01-14</span>
+                                                </div>
+                                                <div class="flex justify-between">
+                                                    <span class="text-sm text-gray-400">OPO:</span>
+                                                    <span class="text-sm text-gray-300" data-bind="donor.opo" data-mock="true">Regional Organ Bank</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </main>
+        </div>
+        <!-- @END_COMPONENT: Main Content Area -->
+    </div>
+
+    <!-- @COMPONENT: Toast Notifications -->
+    <!-- Toast notification (hidden by default) -->
+    <div id="toast-notification" class="fixed inset-0 flex items-end justify-center px-4 py-6 pointer-events-none sm:p-6 sm:items-start sm:justify-end z-50" style="display: none;">
+        <div class="max-w-sm w-full bg-gray-800 border border-gray-700 shadow-lg rounded-lg pointer-events-auto ring-1 ring-black ring-opacity-5 overflow-hidden">
+            <div class="p-4">
+                <div class="flex items-start">
+                    <div class="flex-shrink-0">
+                        <i class="fas fa-check-circle h-6 w-6 text-green-400"></i>
+                    </div>
+                    <div class="ml-3 w-0 flex-1 pt-0.5">
+                        <p class="text-sm font-medium text-gray-100" data-mock="true">Successfully saved</p>
+                        <p class="mt-1 text-sm text-gray-400" data-mock="true">Your changes have been saved to the case passport.</p>
+                    </div>
+                    <div class="ml-4 flex-shrink-0 flex">
+                        <button class="bg-gray-800 rounded-md inline-flex text-gray-400 hover:text-gray-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500">
+                            <i class="fas fa-times h-5 w-5"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- @END_COMPONENT: Toast Notifications -->
+
+    <script>
+        // TODO: Implement business logic, API calls, and state management
+        (function() {
+            // Basic interactivity for demonstration
+            // In production, this would be handled by React state management
+            
+            // Tab switching functionality
+            const tabButtons = document.querySelectorAll('[data-mock="true"]');
+            // Add event listeners for tab switching, form submissions, etc.
+            
+            // Mock notification system
+            function showToast(message, type = 'success') {
+                // Implementation would show toast notifications
+                console.log(`${type}: ${message}`);
+            }
+            
+            // Mock data refresh
+            function refreshDashboardData() {
+                // Implementation would fetch fresh data from API
+                console.log('Refreshing dashboard data...');
+            }
+            
+            // Initialize dashboard
+            refreshDashboardData();
+        })();
+    </script>
+</body>
+</html>

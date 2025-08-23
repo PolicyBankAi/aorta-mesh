@@ -1,0 +1,103 @@
+📄 One-Pager: AORTA Mesh™
+
+Adaptive Organ & Tissue Record & Traceability Architecture
+
+⸻
+
+Problem
+
+Tissue banks and transplant organizations struggle with fragmented data, inconsistent documentation, and compliance risk. Critical workflows depend on paper forms, faxed records, and siloed databases, making audits, case matching, and global traceability inefficient and error-prone.
+
+⸻
+
+Solution
+
+AORTA Mesh™ is a web-based, federated platform that creates a portable, verifiable “Case Passport” for every donor, organ, and tissue lot. It unifies documentation, automates compliance checks, and ensures instant, secure sharing across OPOs, tissue banks, labs, carriers, and hospitals worldwide.
+
+⸻
+
+Key Features
+	•	Case Passport: Cryptographically signed bundle of donor/tissue/organ records, sharable with scoped access.
+	•	Smart Forms: Policy-aware, dynamic forms that prevent missing/invalid fields.
+	•	QA Workbench: AI + rules engine that detects gaps, anomalies, or mismatches before audits.
+	•	Chain-of-Custody Graph: Append-only log from recovery → storage → processing → distribution.
+	•	Audit Binder: One-click compilation of regulatory-ready binders with immutable proofs.
+	•	Interoperability Layer: Connects with EHR, LIS, lab systems, UNOS, courier APIs, and labeling systems.
+
+⸻
+
+Benefits
+	•	70% fewer post-facto documentation errors (caught at point-of-entry).
+	•	50% less duplicate data entry across systems.
+	•	Audit prep time cut from weeks → hours.
+	•	Global compliance readiness (FDA, AATB, UNOS, GDPR, EU directives, etc.).
+
+⸻
+
+Target Users
+	•	Organ Procurement Organizations (OPOs)
+	•	Tissue Banks & Eye Banks
+	•	Transplant Centers & Hospitals
+	•	Labs & Courier Networks
+
+⸻
+
+Business Model
+	•	Per-case or per-lot pricing (scalable with volume).
+	•	Enterprise licensing for unlimited nodes.
+	•	Connector marketplace for labs, EHRs, and courier integrations.
+	•	Compliance subscription for regulatory mapping updates.
+
+⸻
+
+⸻
+
+🎨 Wireframe Concept (Dark Mode, Desktop-First)
+
+Navigation Sidebar
+	•	Dashboard
+	•	Case Passports
+	•	Smart Forms
+	•	QA Workbench
+	•	Chain-of-Custody
+	•	Audit Binder
+	•	Connectors
+
+Dashboard View
+	•	Quick stats: Active cases, flagged discrepancies, audits pending.
+	•	Recent activity: New consents, document uploads, QA alerts.
+
+Case Passport Page
+	•	Header: Donor/Case ID, Status, Last Updated
+	•	Tabs: Documents | Smart Forms | Chain-of-Custody | Audit Binder
+	•	Right-side: Access/Sharing panel (grant/revoke permissions).
+
+QA Workbench
+	•	List of discrepancies with severity color codes.
+	•	Inline document previews.
+	•	Resolution workflow (approve/reject/correct).
+
+⸻
+
+🗂️ MVP Backlog (First 90 Days)
+
+Phase 1: Foundations
+	•	Multi-tenant web app (Next.js + FastAPI + Postgres).
+	•	User authentication (OIDC + RBAC).
+	•	Secure document upload + storage (encrypted).
+
+Phase 2: Core Features
+	•	Case Passport v1 (basic donor/organ/tissue record with attachments).
+	•	Smart Forms v1 (FDA/AATB baseline validations).
+	•	QA Workbench (simple rules engine + discrepancy dashboard).
+	•	Audit Binder v1 (PDF export of case record + logs).
+
+Phase 3: Interoperability
+	•	CSV + PDF ingest (OCR → structured fields).
+	•	Basic FHIR R4 connector (import/export).
+	•	Chain-of-Custody log (manual entry, timestamped).
+
+Phase 4: Pilot Readiness
+	•	Admin dashboard with metrics (error rate, case volume).
+	•	Role-based access (Coordinator, QA Officer, Auditor).
+	•	Secure case sharing (link + expiring access).
