@@ -86,4 +86,9 @@ See `.env.example` for a complete list of required environment variables.
 
 ## 📜 License
 
-MIT License – see `LICENSE` file.
+> ⚠️ **License Notice:** This repository is made public solely for transparency and demonstration purposes.  
+> **All rights are reserved** by PolicyBankAi/Aorta-Mesh.  
+> Unauthorized usage, reproduction, modification, distribution, or deployment of this codebase is strictly prohibited.
+
+Please see the `LICENSE` file for full terms.
+
