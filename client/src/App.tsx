@@ -70,14 +70,18 @@ function Router() {
           <Route path="/chain-of-custody" component={ChainOfCustody} />
 
           {/* Role-specific */}
-          {hasRole(role!, [UserRole.OPO_COORDINATOR, UserRole.RECOVERY_COORDINATOR, UserRole.TRIAGE_COORDINATOR]) && (
+          {role && hasRole(role, [
+            UserRole.OPO_COORDINATOR, 
+            UserRole.RECOVERY_COORDINATOR, 
+            UserRole.TRIAGE_COORDINATOR
+          ]) && (
             <>
               <Route path="/smart-forms" component={SmartForms} />
               <Route path="/queue-management" component={QueueManagement} />
             </>
           )}
 
-          {hasRole(role!, [UserRole.QUALITY_STAFF, UserRole.ADMIN]) && (
+          {role && hasRole(role, [UserRole.QUALITY_STAFF, UserRole.ADMIN]) && (
             <>
               <Route path="/qa-workbench" component={QaWorkbench} />
               <Route path="/four-eyes-approval" component={FourEyesApproval} />
@@ -85,19 +89,19 @@ function Router() {
             </>
           )}
 
-          {hasRole(role!, [UserRole.LAB_STAFF]) && (
+          {role && hasRole(role, [UserRole.LAB_STAFF]) && (
             <Route path="/bulk-operations" component={BulkOperations} />
           )}
 
-          {hasRole(role!, [UserRole.ADMIN]) && (
+          {role && hasRole(role, [UserRole.ADMIN]) && (
             <>
               <Route path="/connectors" component={Connectors} />
               <Route path="/admin-console" component={AdminConsole} />
             </>
           )}
 
-          {/* Consent Manager (likely Admin/Surgeon use only) */}
-          {hasRole(role!, [UserRole.SURGEON, UserRole.ADMIN]) && (
+          {/* Consent Manager (Admin/Surgeon only) */}
+          {role && hasRole(role, [UserRole.SURGEON, UserRole.ADMIN]) && (
             <Route
               path="/consents"
               component={() => <ConsentManagerRoute userId={user?.id ?? ""} />}
