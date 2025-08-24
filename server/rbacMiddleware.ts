@@ -37,7 +37,7 @@ export function requirePermission(permission: Permission) {
         });
       }
 
-      const userRole = req.user.role || UserRole.PATIENT;
+      const userRole = req.user.role ?? UserRole.COURIER; // default fallback
 
       if (!checkPermission(userRole, permission)) {
         securityLogger.warn("RBAC: Insufficient permissions", {
@@ -107,7 +107,7 @@ export function requireAnyRole(...roles: UserRole[]) {
         });
       }
 
-      const userRole = req.user.role || UserRole.PATIENT;
+      const userRole = req.user.role ?? UserRole.COURIER; // default fallback
 
       if (!roles.includes(userRole)) {
         securityLogger.warn("RBAC: Role access denied", {
@@ -151,11 +151,13 @@ export function requireAnyRole(...roles: UserRole[]) {
   };
 }
 
+// --------------------
 // Convenience exports
+// --------------------
 export const requireAdmin = requireAnyRole(UserRole.ADMIN);
 export const requireMedicalAccess = requireAnyRole(
-  UserRole.ADMIN,
-  UserRole.DOCTOR
+  UserRole.SURGEON,
+  UserRole.QUALITY_STAFF
 );
 
 /**
