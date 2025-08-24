@@ -22,7 +22,7 @@ export const requireConsent = (consentType: string) => {
   return async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     try {
       const userId: string | undefined =
-        req.user?.id || (req.body?.user_id as string) || (req.query?.user_id as string);
+        req.user?.id || (req.body?.userId as string) || (req.query?.userId as string);
 
       if (!userId) {
         securityLogger.warn("❌ Missing user ID in requireConsent", {
@@ -37,8 +37,8 @@ export const requireConsent = (consentType: string) => {
         .from(consents)
         .where(
           and(
-            eq(consents.user_id, userId),
-            eq(consents.consent_type, consentType),
+            eq(consents.userId, userId),
+            eq(consents.consentType, consentType),
             eq(consents.withdrawn, false)
           )
         )
