@@ -3,7 +3,7 @@ import { UserRole, Permission, checkPermission } from "@shared/rbac";
 import { securityLogger } from "./security";
 
 // Extended request interface with user context
-interface AuthenticatedRequest extends Request {
+export interface AuthRequest extends Request {
   user?: {
     claims?: {
       sub: string;
@@ -19,7 +19,7 @@ interface AuthenticatedRequest extends Request {
  */
 export function requirePermission(permission: Permission) {
   return async (
-    req: AuthenticatedRequest,
+    req: AuthRequest,
     res: Response,
     next: NextFunction
   ) => {
@@ -37,7 +37,7 @@ export function requirePermission(permission: Permission) {
         });
       }
 
-      const userRole = req.user.role ?? UserRole.COURIER; // default fallback
+      const userRole = req.user.role || UserRole.OPO_COORDINATOR; // 👈 default role if missing
 
       if (!checkPermission(userRole, permission)) {
         securityLogger.warn("RBAC: Insufficient permissions", {
@@ -88,7 +88,7 @@ export function requirePermission(permission: Permission) {
  */
 export function requireAnyRole(...roles: UserRole[]) {
   return async (
-    req: AuthenticatedRequest,
+    req: AuthRequest,
     res: Response,
     next: NextFunction
   ) => {
@@ -107,7 +107,7 @@ export function requireAnyRole(...roles: UserRole[]) {
         });
       }
 
-      const userRole = req.user.role ?? UserRole.COURIER; // default fallback
+      const userRole = req.user.role || UserRole.OPO_COORDINATOR;
 
       if (!roles.includes(userRole)) {
         securityLogger.warn("RBAC: Role access denied", {
@@ -151,13 +151,11 @@ export function requireAnyRole(...roles: UserRole[]) {
   };
 }
 
-// --------------------
 // Convenience exports
-// --------------------
 export const requireAdmin = requireAnyRole(UserRole.ADMIN);
 export const requireMedicalAccess = requireAnyRole(
-  UserRole.SURGEON,
-  UserRole.QUALITY_STAFF
+  UserRole.ADMIN,
+  UserRole.SURGEON
 );
 
 /**
@@ -166,7 +164,7 @@ export const requireMedicalAccess = requireAnyRole(
 export function logDataAccessWithRBAC(
   operation: "read" | "write" | "delete"
 ) {
-  return (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  return (req: AuthRequest, res: Response, next: NextFunction) => {
     const userId = req.user?.claims?.sub || "anonymous";
     const userRole = req.user?.role || "unknown";
     const userAgent = req.get("User-Agent") || "unknown";
