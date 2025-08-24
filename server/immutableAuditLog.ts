@@ -266,9 +266,7 @@ export class ImmutableAuditLogger {
     this.lastHash = entryHash;
   }
 
-  /**
-   * ✅ NEW: search method to support queries
-   */
+  /** ✅ search method */
   async search(query: AuditSearchQuery): Promise<ImmutableAuditEntry[]> {
     return this.storage.search(query);
   }
@@ -331,7 +329,8 @@ export function immutableAuditMiddleware() {
 export function logEmergencyAccess(
   userId: string,
   path: string,
-  reason: string
+  reason: string,
+  context?: { ip?: string; userAgent?: string; timestamp?: string }
 ) {
   immutableAuditLogger
     .log(
@@ -339,9 +338,9 @@ export function logEmergencyAccess(
       "emergency",
       "emergency_access",
       path,
-      { reason },
-      "unknown",
-      "unknown",
+      { reason, ...context },
+      context?.ip || "unknown",
+      context?.userAgent || "unknown",
       {
         classification: "restricted",
         retentionPeriod: 10,
