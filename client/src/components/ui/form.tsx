@@ -17,6 +17,7 @@ import { Label } from "@/components/ui/label"
 
 const Form = FormProvider
 
+// ---- Contexts ----
 type FormFieldContextValue<
   TFieldValues extends FieldValues = FieldValues,
   TName extends FieldPath<TFieldValues> = FieldPath<TFieldValues>
@@ -24,10 +25,12 @@ type FormFieldContextValue<
   name: TName
 }
 
-const FormFieldContext = React.createContext<FormFieldContextValue>(
-  {} as FormFieldContextValue
-)
+const FormFieldContext = React.createContext<FormFieldContextValue | null>(null)
 
+type FormItemContextValue = { id: string }
+const FormItemContext = React.createContext<FormItemContextValue | null>(null)
+
+// ---- Field Wrapper ----
 const FormField = <
   TFieldValues extends FieldValues = FieldValues,
   TName extends FieldPath<TFieldValues> = FieldPath<TFieldValues>
@@ -41,17 +44,20 @@ const FormField = <
   )
 }
 
+// ---- Hook ----
 const useFormField = () => {
   const fieldContext = React.useContext(FormFieldContext)
   const itemContext = React.useContext(FormItemContext)
   const { getFieldState, formState } = useFormContext()
 
-  const fieldState = getFieldState(fieldContext.name, formState)
-
   if (!fieldContext) {
-    throw new Error("useFormField should be used within <FormField>")
+    throw new Error("useFormField must be used within <FormField>")
+  }
+  if (!itemContext) {
+    throw new Error("useFormField must be used within <FormItem>")
   }
 
+  const fieldState = getFieldState(fieldContext.name, formState)
   const { id } = itemContext
 
   return {
@@ -64,20 +70,12 @@ const useFormField = () => {
   }
 }
 
-type FormItemContextValue = {
-  id: string
-}
-
-const FormItemContext = React.createContext<FormItemContextValue>(
-  {} as FormItemContextValue
-)
-
+// ---- Components ----
 const FormItem = React.forwardRef<
   HTMLDivElement,
   React.HTMLAttributes<HTMLDivElement>
 >(({ className, ...props }, ref) => {
   const id = React.useId()
-
   return (
     <FormItemContext.Provider value={{ id }}>
       <div ref={ref} className={cn("space-y-2", className)} {...props} />
@@ -91,11 +89,10 @@ const FormLabel = React.forwardRef<
   React.ComponentPropsWithoutRef<typeof LabelPrimitive.Root>
 >(({ className, ...props }, ref) => {
   const { error, formItemId } = useFormField()
-
   return (
     <Label
       ref={ref}
-      className={cn(error && "text-destructive", className)}
+      className={cn(error && "text-red-500 dark:text-red-400", className)}
       htmlFor={formItemId}
       {...props}
     />
@@ -108,14 +105,13 @@ const FormControl = React.forwardRef<
   React.ComponentPropsWithoutRef<typeof Slot>
 >(({ ...props }, ref) => {
   const { error, formItemId, formDescriptionId, formMessageId } = useFormField()
-
   return (
     <Slot
       ref={ref}
       id={formItemId}
       aria-describedby={
         !error
-          ? `${formDescriptionId}`
+          ? formDescriptionId
           : `${formDescriptionId} ${formMessageId}`
       }
       aria-invalid={!!error}
@@ -130,12 +126,11 @@ const FormDescription = React.forwardRef<
   React.HTMLAttributes<HTMLParagraphElement>
 >(({ className, ...props }, ref) => {
   const { formDescriptionId } = useFormField()
-
   return (
     <p
       ref={ref}
       id={formDescriptionId}
-      className={cn("text-sm text-muted-foreground", className)}
+      className={cn("text-sm text-gray-500 dark:text-gray-400", className)}
       {...props}
     />
   )
@@ -148,16 +143,12 @@ const FormMessage = React.forwardRef<
 >(({ className, children, ...props }, ref) => {
   const { error, formMessageId } = useFormField()
   const body = error ? String(error?.message ?? "") : children
-
-  if (!body) {
-    return null
-  }
-
+  if (!body) return null
   return (
     <p
       ref={ref}
       id={formMessageId}
-      className={cn("text-sm font-medium text-destructive", className)}
+      className={cn("text-sm font-medium text-red-500 dark:text-red-400", className)}
       {...props}
     >
       {body}
@@ -166,6 +157,7 @@ const FormMessage = React.forwardRef<
 })
 FormMessage.displayName = "FormMessage"
 
+// ---- Exports ----
 export {
   useFormField,
   Form,
@@ -176,3 +168,4 @@ export {
   FormMessage,
   FormField,
 }
+
