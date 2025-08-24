@@ -1,7 +1,7 @@
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Shield, LogOut, User, Building2 } from "lucide-react";
+import { Shield, LogOut, User } from "lucide-react";
 import { Link } from "wouter";
 import type { User as UserType } from "@shared/schema";
 
@@ -25,22 +25,22 @@ export default function Home() {
               {typedUser && (
                 <div className="flex items-center space-x-2">
                   <User className="w-5 h-5 text-cyan-400" />
-                  <span className="text-gray-300">{typedUser.firstName} {typedUser.lastName}</span>
+                  <span className="text-gray-300">
+                    {typedUser.firstName} {typedUser.lastName}
+                  </span>
                 </div>
               )}
-              <Button 
+              <Button
                 onClick={async () => {
                   try {
-                    // Try demo logout first (will fail in production)
-                    const response = await fetch('/api/demo/logout', { method: 'POST' });
+                    const response = await fetch("/api/demo/logout", { method: "POST" });
                     if (response.ok) {
                       window.location.reload();
                     } else {
-                      window.location.href = '/api/logout';
+                      window.location.href = "/api/logout";
                     }
                   } catch {
-                    // Fallback to production logout
-                    window.location.href = '/api/logout';
+                    window.location.href = "/api/logout";
                   }
                 }}
                 variant="outline"
@@ -65,8 +65,8 @@ export default function Home() {
             End-to-end compliance and auditability for the organ and tissue banking lifecycle.
           </p>
           <p className="text-lg text-gray-400 max-w-3xl">
-            Your secure, enterprise-grade platform for organ and tissue traceability. 
-            Access all your tools and manage case passports with full compliance and audit capabilities.
+            Your secure, enterprise-grade platform for organ and tissue traceability. Access all
+            your tools and manage case passports with full compliance and audit capabilities.
           </p>
         </div>
 
@@ -81,12 +81,20 @@ export default function Home() {
             <CardContent>
               <div className="grid md:grid-cols-2 gap-4 text-gray-300">
                 <div>
-                  <p><strong>Name:</strong> {typedUser.firstName} {typedUser.lastName}</p>
-                  <p><strong>Email:</strong> {typedUser.email}</p>
+                  <p>
+                    <strong>Name:</strong> {typedUser.firstName} {typedUser.lastName}
+                  </p>
+                  <p>
+                    <strong>Email:</strong> {typedUser.email}
+                  </p>
                 </div>
                 <div>
-                  <p><strong>Role:</strong> {typedUser.role}</p>
-                  <p><strong>Organization:</strong> {typedUser.organizationId}</p>
+                  <p>
+                    <strong>Role:</strong> {typedUser.role}
+                  </p>
+                  <p>
+                    <strong>Organization:</strong> {typedUser.organizationId}
+                  </p>
                 </div>
               </div>
             </CardContent>
