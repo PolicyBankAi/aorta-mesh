@@ -1,31 +1,37 @@
 // server/storageBackends.ts
-// Step 4 Fix: Stubbed storage backends for audit logging
-// Replace with real implementations later as needed.
+// Stubs for CloudTrail and Elasticsearch backends used in immutableAuditLog.ts
 
-/**
- * CloudTrailStorage
- * Stub implementation that simulates writing to AWS CloudTrail.
- */
-export class CloudTrailStorage {
-  async writeLog(entry: any) {
-    console.log("📥 [CloudTrailStorage] writeLog called", entry);
-    // TODO: integrate with AWS CloudTrail in production
+import { AuditStorageBackend, ImmutableAuditEntry, AuditSearchQuery } from "./immutableAuditLog";
+
+export class CloudTrailStorage implements AuditStorageBackend {
+  async append(entry: ImmutableAuditEntry): Promise<void> {
+    // TODO: real AWS CloudTrail integration
+    return;
   }
-}
-
-/**
- * ElasticsearchWORMStorage
- * Stub implementation that simulates a WORM-compliant Elasticsearch backend.
- */
-export class ElasticsearchWORMStorage {
-  async writeLog(entry: any) {
-    console.log("📥 [ElasticsearchWORMStorage] writeLog called", entry);
-    // TODO: integrate with Elasticsearch WORM policy in production
+  async verify(entries: ImmutableAuditEntry[]): Promise<boolean> {
+    return true;
   }
-
-  async search(query: any) {
-    console.log("🔎 [ElasticsearchWORMStorage] search called", query);
-    // TODO: implement Elasticsearch search logic
+  async search(query: AuditSearchQuery): Promise<ImmutableAuditEntry[]> {
+    return [];
+  }
+  async export(startDate: Date, endDate: Date): Promise<ImmutableAuditEntry[]> {
     return [];
   }
 }
+
+export class ElasticsearchWORMStorage implements AuditStorageBackend {
+  async append(entry: ImmutableAuditEntry): Promise<void> {
+    // TODO: real Elasticsearch WORM integration
+    return;
+  }
+  async verify(entries: ImmutableAuditEntry[]): Promise<boolean> {
+    return true;
+  }
+  async search(query: AuditSearchQuery): Promise<ImmutableAuditEntry[]> {
+    return [];
+  }
+  async export(startDate: Date, endDate: Date): Promise<ImmutableAuditEntry[]> {
+    return [];
+  }
+}
+
