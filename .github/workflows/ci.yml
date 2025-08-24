@@ -53,6 +53,11 @@ jobs:
           commit_message: "chore: auto-regenerate pnpm lockfile [ci skip]"
           file_pattern: pnpm-lock.yaml
 
+      # ✅ Re-install to ensure deps match regenerated lockfile
+      - name: 🔁 Re-install after regen
+        if: steps.install.outcome == 'failure'
+        run: pnpm install --frozen-lockfile
+
       - name: ♻️ Dedupe
         run: pnpm dedupe
 
