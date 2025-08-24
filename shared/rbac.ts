@@ -1,10 +1,15 @@
 // Role-Based Access Control (RBAC) System for AORTA Mesh
+// Updated for Organ & Tissue Traceability workflows
 
 export enum UserRole {
   ADMIN = 'admin',
-  DOCTOR = 'doctor', 
-  RESEARCHER = 'researcher',
-  PATIENT = 'patient'
+  OPO_COORDINATOR = 'opo_coordinator',
+  RECOVERY_COORDINATOR = 'recovery_coordinator',
+  TRIAGE_COORDINATOR = 'triage_coordinator',
+  SURGEON = 'surgeon',
+  QUALITY_STAFF = 'quality_staff',
+  LAB_STAFF = 'lab_staff',
+  COURIER = 'courier'
 }
 
 export enum Permission {
@@ -12,57 +17,60 @@ export enum Permission {
   VIEW_CASE_PASSPORTS = 'view_case_passports',
   CREATE_CASE_PASSPORTS = 'create_case_passports',
   EDIT_CASE_PASSPORTS = 'edit_case_passports',
-  DELETE_CASE_PASSPORTS = 'delete_case_passports',
-  
-  // Document permissions
+  CLOSE_CASE_PASSPORTS = 'close_case_passports',
+
+  // Document & Lab permissions
   VIEW_DOCUMENTS = 'view_documents',
   UPLOAD_DOCUMENTS = 'upload_documents',
   DELETE_DOCUMENTS = 'delete_documents',
-  
-  // QA permissions
+  UPLOAD_LAB_RESULTS = 'upload_lab_results',
+  VIEW_LAB_RESULTS = 'view_lab_results',
+
+  // QA / Compliance
   VIEW_QA_ALERTS = 'view_qa_alerts',
   CREATE_QA_ALERTS = 'create_qa_alerts',
   RESOLVE_QA_ALERTS = 'resolve_qa_alerts',
-  
-  // Chain of Custody permissions
+  APPROVE_FOUR_EYES = 'approve_four_eyes',
+
+  // Chain of Custody
   VIEW_CHAIN_OF_CUSTODY = 'view_chain_of_custody',
   UPDATE_CHAIN_OF_CUSTODY = 'update_chain_of_custody',
-  
-  // Admin permissions
+
+  // Admin / System
   MANAGE_USERS = 'manage_users',
   VIEW_AUDIT_LOGS = 'view_audit_logs',
   SYSTEM_CONFIGURATION = 'system_configuration',
-  
-  // Research permissions
-  EXPORT_DATA = 'export_data',
-  VIEW_ANALYTICS = 'view_analytics'
+  MANAGE_CONNECTORS = 'manage_connectors',
+  TENANT_MANAGEMENT = 'tenant_management'
 }
 
 // Role-Permission mapping
 export const rolePermissions: Record<UserRole, Permission[]> = {
   [UserRole.ADMIN]: [
-    // Full access to everything
+    // Full enterprise access
     Permission.VIEW_CASE_PASSPORTS,
     Permission.CREATE_CASE_PASSPORTS,
     Permission.EDIT_CASE_PASSPORTS,
-    Permission.DELETE_CASE_PASSPORTS,
+    Permission.CLOSE_CASE_PASSPORTS,
     Permission.VIEW_DOCUMENTS,
     Permission.UPLOAD_DOCUMENTS,
     Permission.DELETE_DOCUMENTS,
+    Permission.UPLOAD_LAB_RESULTS,
+    Permission.VIEW_LAB_RESULTS,
     Permission.VIEW_QA_ALERTS,
     Permission.CREATE_QA_ALERTS,
     Permission.RESOLVE_QA_ALERTS,
+    Permission.APPROVE_FOUR_EYES,
     Permission.VIEW_CHAIN_OF_CUSTODY,
     Permission.UPDATE_CHAIN_OF_CUSTODY,
     Permission.MANAGE_USERS,
     Permission.VIEW_AUDIT_LOGS,
     Permission.SYSTEM_CONFIGURATION,
-    Permission.EXPORT_DATA,
-    Permission.VIEW_ANALYTICS
+    Permission.MANAGE_CONNECTORS,
+    Permission.TENANT_MANAGEMENT
   ],
-  
-  [UserRole.DOCTOR]: [
-    // Medical professionals - full clinical access
+
+  [UserRole.OPO_COORDINATOR]: [
     Permission.VIEW_CASE_PASSPORTS,
     Permission.CREATE_CASE_PASSPORTS,
     Permission.EDIT_CASE_PASSPORTS,
@@ -70,27 +78,55 @@ export const rolePermissions: Record<UserRole, Permission[]> = {
     Permission.UPLOAD_DOCUMENTS,
     Permission.VIEW_QA_ALERTS,
     Permission.CREATE_QA_ALERTS,
-    Permission.RESOLVE_QA_ALERTS,
     Permission.VIEW_CHAIN_OF_CUSTODY,
-    Permission.UPDATE_CHAIN_OF_CUSTODY,
-    Permission.VIEW_ANALYTICS
+    Permission.UPDATE_CHAIN_OF_CUSTODY
   ],
-  
-  [UserRole.RESEARCHER]: [
-    // Researchers - read access + analytics
+
+  [UserRole.RECOVERY_COORDINATOR]: [
     Permission.VIEW_CASE_PASSPORTS,
+    Permission.EDIT_CASE_PASSPORTS,
     Permission.VIEW_DOCUMENTS,
-    Permission.VIEW_QA_ALERTS,
+    Permission.UPLOAD_DOCUMENTS,
     Permission.VIEW_CHAIN_OF_CUSTODY,
-    Permission.EXPORT_DATA,
-    Permission.VIEW_ANALYTICS
+    Permission.UPDATE_CHAIN_OF_CUSTODY
   ],
-  
-  [UserRole.PATIENT]: [
-    // Patients - limited access to their own data
-    Permission.VIEW_CASE_PASSPORTS, // Only their own
-    Permission.VIEW_DOCUMENTS,      // Only their own
-    Permission.VIEW_CHAIN_OF_CUSTODY // Only their own
+
+  [UserRole.TRIAGE_COORDINATOR]: [
+    Permission.VIEW_CASE_PASSPORTS,
+    Permission.EDIT_CASE_PASSPORTS,
+    Permission.VIEW_QA_ALERTS,
+    Permission.CREATE_QA_ALERTS,
+    Permission.VIEW_CHAIN_OF_CUSTODY
+  ],
+
+  [UserRole.SURGEON]: [
+    Permission.VIEW_CASE_PASSPORTS,
+    Permission.CLOSE_CASE_PASSPORTS,
+    Permission.VIEW_DOCUMENTS,
+    Permission.VIEW_LAB_RESULTS,
+    Permission.VIEW_CHAIN_OF_CUSTODY,
+    Permission.APPROVE_FOUR_EYES
+  ],
+
+  [UserRole.QUALITY_STAFF]: [
+    Permission.VIEW_QA_ALERTS,
+    Permission.CREATE_QA_ALERTS,
+    Permission.RESOLVE_QA_ALERTS,
+    Permission.APPROVE_FOUR_EYES,
+    Permission.VIEW_AUDIT_LOGS
+  ],
+
+  [UserRole.LAB_STAFF]: [
+    Permission.UPLOAD_LAB_RESULTS,
+    Permission.VIEW_LAB_RESULTS,
+    Permission.VIEW_DOCUMENTS,
+    Permission.UPLOAD_DOCUMENTS,
+    Permission.VIEW_CASE_PASSPORTS
+  ],
+
+  [UserRole.COURIER]: [
+    Permission.VIEW_CHAIN_OF_CUSTODY,
+    Permission.UPDATE_CHAIN_OF_CUSTODY
   ]
 };
 
@@ -123,6 +159,6 @@ export interface MFAConfig {
 
 export const mfaConfig: MFAConfig = {
   enabled: true,
-  requiredForRoles: [UserRole.ADMIN, UserRole.DOCTOR],
+  requiredForRoles: [UserRole.ADMIN, UserRole.SURGEON, UserRole.OPO_COORDINATOR],
   methods: ['totp', 'sms', 'email']
 };
