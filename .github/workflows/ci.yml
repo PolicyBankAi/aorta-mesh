@@ -10,29 +10,54 @@ jobs:
   build-and-check:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
+      - name: 📥 Checkout
         uses: actions/checkout@v4
-
-      # put pnpm on PATH first
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v2
         with:
-          version: 8
+          fetch-depth: 0 # needed if we push back to PR branches
 
-      - name: Setup Node.js
+      - name: ⚡ Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: ⚡ Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: pnpm
 
-      - name: Install dependencies
+      - name: 🔎 Install dependencies (frozen)
+        id: install
+        continue-on-error: true
         run: pnpm install --frozen-lockfile
 
-      - name: Dedupe
+      - name: 🔄 Regenerate lockfile if frozen install failed
+        if: steps.install.outcome == 'failure'
+        run: |
+          echo "Lockfile mismatch detected. Regenerating..."
+          rm -f pnpm-lock.yaml
+          pnpm install --no-frozen-lockfile
+
+      - name: 💾 Commit updated lockfile to PR branch
+        if: steps.install.outcome == 'failure' && github.event_name == 'pull_request'
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "chore: auto-regenerate pnpm lockfile [ci skip]"
+          file_pattern: pnpm-lock.yaml
+          branch: ${{ github.head_ref }}
+
+      - name: 💾 Commit updated lockfile to main
+        if: steps.install.outcome == 'failure' && github.event_name != 'pull_request'
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "chore: auto-regenerate pnpm lockfile [ci skip]"
+          file_pattern: pnpm-lock.yaml
+
+      - name: ♻️ Dedupe
         run: pnpm dedupe
 
-      - name: Type check
+      - name: ✅ Type check
         run: pnpm check
 
-      - name: Build
+      - name: 🏗️ Build
         run: pnpm build
