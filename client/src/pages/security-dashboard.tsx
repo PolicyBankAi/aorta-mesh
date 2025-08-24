@@ -1,22 +1,27 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle
+} from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { 
-  Shield, 
-  AlertTriangle, 
-  Key, 
-  FileText, 
-  Activity, 
-  CheckCircle, 
+import {
+  Shield,
+  AlertTriangle,
+  FileText,
+  CheckCircle,
   Clock,
   Database,
   Lock
 } from "lucide-react";
 
+// --- Types ---
 interface ComplianceFramework {
   totalControls: number;
   passedControls: number;
@@ -32,20 +37,59 @@ interface ComplianceDashboard {
     control: string;
     validationResult?: { passed: boolean };
   }[];
-  pendingGDPRRequests?: { type: string; subjectEmail: string; dueDate: string }[];
-  upcomingExpirations?: any[];
+  pendingGDPRRequests?: {
+    type: string;
+    subjectEmail: string;
+    dueDate: string;
+  }[];
+  upcomingExpirations?: {
+    name: string;
+    type: string;
+    expiresAt: string;
+  }[];
 }
 
 interface SecurityIncident {
   id: string;
   timestamp: string;
-  severity: 'low' | 'medium' | 'high' | 'critical';
+  severity: "low" | "medium" | "high" | "critical";
   category: string;
   title: string;
-  status: 'detected' | 'investigating' | 'contained' | 'resolved' | 'closed';
+  status: "detected" | "investigating" | "contained" | "resolved" | "closed";
   phiInvolved: boolean;
 }
 
+interface AuditLog {
+  id: string;
+  timestamp: string;
+  user: string;
+  action: string;
+  resource: string;
+}
+
+// --- Helpers ---
+const getSeverityColor = (severity: string) => {
+  switch (severity) {
+    case "critical":
+      return "bg-red-900 text-red-100 border-red-700";
+    case "high":
+      return "bg-orange-900 text-orange-100 border-orange-700";
+    case "medium":
+      return "bg-yellow-900 text-yellow-100 border-yellow-700";
+    case "low":
+      return "bg-blue-900 text-blue-100 border-blue-700";
+    default:
+      return "bg-gray-900 text-gray-100 border-gray-700";
+  }
+};
+
+const getComplianceColor = (score: number) => {
+  if (score >= 90) return "text-green-400";
+  if (score >= 70) return "text-yellow-400";
+  return "text-red-400";
+};
+
+// --- Component ---
 export default function SecurityDashboard() {
   const [selectedTab, setSelectedTab] = useState("overview");
 
@@ -59,26 +103,10 @@ export default function SecurityDashboard() {
     refetchInterval: 10000,
   });
 
-  const { data: auditLogs } = useQuery<any[]>({
+  const { data: auditLogs } = useQuery<AuditLog[]>({
     queryKey: ["/api/security/audit-logs", { limit: 50 }],
     refetchInterval: 15000,
   });
-
-  const getSeverityColor = (severity: string) => {
-    switch (severity) {
-      case 'critical': return 'bg-red-900 text-red-100 border-red-700';
-      case 'high': return 'bg-orange-900 text-orange-100 border-orange-700';
-      case 'medium': return 'bg-yellow-900 text-yellow-100 border-yellow-700';
-      case 'low': return 'bg-blue-900 text-blue-100 border-blue-700';
-      default: return 'bg-gray-900 text-gray-100 border-gray-700';
-    }
-  };
-
-  const getComplianceColor = (score: number) => {
-    if (score >= 90) return 'text-green-400';
-    if (score >= 70) return 'text-yellow-400';
-    return 'text-red-400';
-  };
 
   return (
     <div className="min-h-screen bg-black text-white p-6">
@@ -168,7 +196,7 @@ export default function SecurityDashboard() {
             <TabsTrigger value="audit">Audit Logs</TabsTrigger>
           </TabsList>
 
-          {/* Compliance Evidence (line 108 fix) */}
+          {/* Compliance Evidence */}
           <TabsContent value="compliance" className="space-y-4">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <Card className="bg-gray-950 border-gray-800">
@@ -177,6 +205,9 @@ export default function SecurityDashboard() {
                     <FileText className="w-5 h-5 mr-2 text-cyan-400" />
                     Recent Evidence Collection
                   </CardTitle>
+                  <CardDescription>
+                    Latest compliance evidence validations across frameworks
+                  </CardDescription>
                 </CardHeader>
                 <CardContent>
                   <ScrollArea className="h-64">
@@ -214,7 +245,8 @@ export default function SecurityDashboard() {
                   </ScrollArea>
                 </CardContent>
               </Card>
-              {/* GDPR Requests left unchanged */}
+
+              {/* Placeholder: GDPR Requests, Expirations, etc. */}
             </div>
           </TabsContent>
         </Tabs>
