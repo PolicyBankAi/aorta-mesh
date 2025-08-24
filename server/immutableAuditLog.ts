@@ -354,6 +354,20 @@ export class ImmutableAuditLogger {
       throw error;
     }
   }
+
+  /**
+   * ✅ NEW: Search method to support audit queries
+   */
+  async search(query: AuditSearchQuery): Promise<ImmutableAuditEntry[]> {
+    try {
+      return await this.storage.search(query);
+    } catch (error) {
+      securityLogger.error('Audit search failed in logger', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+      return [];
+    }
+  }
 }
 
 // Global immutable audit logger
@@ -378,7 +392,7 @@ export function immutableAuditMiddleware() {
           await immutableAuditLogger.log(
             userId,
             userRole,
-            `${req.method}_${req.path.replace(/\//g, '_')}`,
+            `${req.method}_${req.path.replace(/\//g, '_')}`.toLowerCase(),
             req.path,
             {
               method: req.method,
@@ -438,3 +452,4 @@ export function logEmergencyAccess(userId: string, path: string, reason: string)
       });
     });
 }
+
