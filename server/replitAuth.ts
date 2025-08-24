@@ -1,16 +1,21 @@
 import * as client from "openid-client";
 import { Strategy, type VerifyFunction } from "openid-client/passport";
-
 import passport from "passport";
 import session from "express-session";
 import type { Express, RequestHandler } from "express";
 import memoize from "memoizee";
 import connectPg from "connect-pg-simple";
 import { storage } from "./storage";
+import { securityLogger } from "./security";
 
-// Only require REPLIT_DOMAINS in production mode
-if (process.env.NODE_ENV === 'production' && !process.env.REPLIT_DOMAINS) {
-  throw new Error("Environment variable REPLIT_DOMAINS not provided");
+// Require critical env vars in production
+if (process.env.NODE_ENV === "production") {
+  const required = ["REPLIT_DOMAINS", "ISSUER_URL", "REPL_ID", "SESSION_SECRET"];
+  for (const key of required) {
+    if (!process.env[key]) {
+      throw new Error(`Missing required environment variable: ${key}`);
+    }
+  }
 }
 
 const getOidcConfig = memoize(
@@ -26,22 +31,24 @@ const getOidcConfig = memoize(
 export function getSession() {
   const sessionTtl = 7 * 24 * 60 * 60 * 1000; // 1 week
   const pgStore = connectPg(session);
+
   const sessionStore = new pgStore({
     conString: process.env.DATABASE_URL,
     createTableIfMissing: true,
     ttl: sessionTtl,
     tableName: "sessions",
   });
+
   return session({
     secret: process.env.SESSION_SECRET!,
     store: sessionStore,
     resave: false,
     saveUninitialized: false,
-    name: 'aorta-mesh-session',
+    name: "aorta-mesh-session",
     cookie: {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "strict",
       maxAge: sessionTtl,
     },
   });
@@ -57,30 +64,34 @@ function updateUserSession(
   user.expires_at = user.claims?.exp;
 }
 
-async function upsertUser(
-  claims: any,
-) {
-  await storage.upsertUser({
-    id: claims["sub"],
-    email: claims["email"],
-    firstName: claims["first_name"],
-    lastName: claims["last_name"],
-    profileImageUrl: claims["profile_image_url"],
-  });
+async function upsertUser(claims: any) {
+  try {
+    await storage.upsertUser({
+      id: claims["sub"],
+      email: claims["email"],
+      firstName: claims["first_name"],
+      lastName: claims["last_name"],
+      profileImageUrl: claims["profile_image_url"],
+    });
+  } catch (err) {
+    securityLogger.error("Failed to upsert user during OIDC login", {
+      error: err instanceof Error ? err.message : String(err),
+      claims,
+    });
+    throw err;
+  }
 }
 
 export async function setupAuth(app: Express) {
-  // Setup session management for both dev and production
   app.set("trust proxy", 1);
   app.use(getSession());
   app.use(passport.initialize());
   app.use(passport.session());
-  
-  // Skip OIDC setup in development mode but keep session management
-  if (process.env.NODE_ENV !== 'production') {
-    console.log("Using session-based auth in development mode");
-    
-    // Simple session serialization for dev mode
+
+  // Development mode — use fake session user
+  if (process.env.NODE_ENV !== "production") {
+    securityLogger.info("Auth: Using session-based demo auth in development");
+
     passport.serializeUser((user: Express.User, cb) => cb(null, user));
     passport.deserializeUser((user: Express.User, cb) => cb(null, user));
     return;
@@ -92,14 +103,17 @@ export async function setupAuth(app: Express) {
     tokens: client.TokenEndpointResponse & client.TokenEndpointResponseHelpers,
     verified: passport.AuthenticateCallback
   ) => {
-    const user = {};
-    updateUserSession(user, tokens);
-    await upsertUser(tokens.claims());
-    verified(null, user);
+    try {
+      const user = {};
+      updateUserSession(user, tokens);
+      await upsertUser(tokens.claims());
+      verified(null, user);
+    } catch (err) {
+      verified(err as Error);
+    }
   };
 
-  for (const domain of process.env
-    .REPLIT_DOMAINS!.split(",")) {
+  for (const domain of process.env.REPLIT_DOMAINS!.split(",")) {
     const strategy = new Strategy(
       {
         name: `replitauth:${domain}`,
@@ -107,7 +121,7 @@ export async function setupAuth(app: Express) {
         scope: "openid email profile offline_access",
         callbackURL: `https://${domain}/api/callback`,
       },
-      verify,
+      verify
     );
     passport.use(strategy);
   }
@@ -131,6 +145,7 @@ export async function setupAuth(app: Express) {
 
   app.get("/api/logout", (req, res) => {
     req.logout(() => {
+      securityLogger.info("Auth: User logged out", { host: req.hostname });
       res.redirect(
         client.buildEndSessionUrl(config, {
           client_id: process.env.REPL_ID!,
@@ -142,8 +157,8 @@ export async function setupAuth(app: Express) {
 }
 
 export const isAuthenticated: RequestHandler = async (req, res, next) => {
-  // Development mode: check for demo session
-  if (process.env.NODE_ENV !== 'production') {
+  // Development mode: allow demo user
+  if (process.env.NODE_ENV !== "production") {
     const demoUser = (req.session as any)?.demoUser;
     if (demoUser) {
       (req as any).user = {
@@ -152,17 +167,15 @@ export const isAuthenticated: RequestHandler = async (req, res, next) => {
           email: demoUser.email,
           first_name: demoUser.firstName,
           last_name: demoUser.lastName,
-          profile_image_url: demoUser.profileImageUrl
-        }
+          profile_image_url: demoUser.profileImageUrl,
+        },
       };
       return next();
     }
     return res.status(401).json({ message: "Unauthorized" });
   }
 
-  // Production mode: check real authentication
   const user = req.user as any;
-
   if (!req.isAuthenticated() || !user?.expires_at) {
     return res.status(401).json({ message: "Unauthorized" });
   }
@@ -174,8 +187,8 @@ export const isAuthenticated: RequestHandler = async (req, res, next) => {
 
   const refreshToken = user.refresh_token;
   if (!refreshToken) {
-    res.status(401).json({ message: "Unauthorized" });
-    return;
+    securityLogger.warn("Auth: No refresh token available", { userId: user?.claims?.sub });
+    return res.status(401).json({ message: "Unauthorized" });
   }
 
   try {
@@ -184,7 +197,10 @@ export const isAuthenticated: RequestHandler = async (req, res, next) => {
     updateUserSession(user, tokenResponse);
     return next();
   } catch (error) {
-    res.status(401).json({ message: "Unauthorized" });
-    return;
+    securityLogger.error("Auth: Failed to refresh token", {
+      error: error instanceof Error ? error.message : String(error),
+      userId: user?.claims?.sub,
+    });
+    return res.status(401).json({ message: "Unauthorized" });
   }
 };
