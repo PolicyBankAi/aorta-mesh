@@ -17,12 +17,12 @@ export function useConsent(userId: string) {
     if (!userId) return;
     try {
       setLoading(true);
-      const res = await fetch(`/api/consents?user_id=${userId}`);
+      const res = await fetch(`/api/consents?user_id=${encodeURIComponent(userId)}`);
       if (!res.ok) throw new Error("Failed to fetch consents");
-      const data = await res.json();
+      const data: Consent[] = await res.json();
       setConsents(data);
     } catch (err) {
-      console.error("Error fetching consents:", err);
+      console.error("❌ Error fetching consents:", err);
     } finally {
       setLoading(false);
     }
@@ -40,7 +40,7 @@ export function useConsent(userId: string) {
         if (!res.ok) throw new Error("Failed to record consent");
         await fetchConsents(); // refresh list
       } catch (err) {
-        console.error("Error giving consent:", err);
+        console.error("❌ Error giving consent:", err);
       }
     },
     [userId, fetchConsents]
@@ -56,16 +56,17 @@ export function useConsent(userId: string) {
         if (!res.ok) throw new Error("Failed to withdraw consent");
         await fetchConsents(); // refresh list
       } catch (err) {
-        console.error("Error withdrawing consent:", err);
+        console.error("❌ Error withdrawing consent:", err);
       }
     },
     [fetchConsents]
   );
 
-  // Load consents on mount / when userId changes
+  // 🔄 Load consents on mount / when userId changes
   useEffect(() => {
     fetchConsents();
   }, [fetchConsents]);
 
-  return { consents, loading, giveConsent, withdrawConsent };
+  return { consents, loading, giveConsent, withdrawConsent, refresh: fetchConsents };
 }
+
