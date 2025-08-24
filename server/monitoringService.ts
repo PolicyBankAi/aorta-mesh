@@ -1,7 +1,15 @@
-import { Request, Response } from "express";
+import { Request, Response, NextFunction } from "express";
 import { securityLogger } from "./security";
 
-// Mock Sentry integration (install @sentry/node for real implementation)
+// ✅ Try to load Sentry, fallback to mock if not available
+let Sentry: any = null;
+try {
+  Sentry = require("@sentry/node");
+} catch {
+  securityLogger.warn("Sentry not installed — using mock implementation");
+}
+
+// --- Sentry Integration (real or mock) ---
 interface SentryLike {
   captureException(error: Error, context?: any): void;
   captureMessage(message: string, level?: string): void;
@@ -17,65 +25,58 @@ class MockSentry implements SentryLike {
       context,
     });
   }
-
   captureMessage(message: string, level?: string) {
     securityLogger.info("Sentry: Message captured", { message, level });
   }
-
-  setUser(user: { id?: string; email?: string }) {}
-  setContext(key: string, context: any) {}
+  setUser(_user: { id?: string; email?: string }) {}
+  setContext(_key: string, _context: any) {}
 }
 
-export const sentry = new MockSentry();
+export const sentry: SentryLike = Sentry ? Sentry : new MockSentry();
 
-/**
- * Prometheus-style metrics collection
- */
+// --- Prometheus Metrics Collector ---
 interface MetricData {
   name: string;
   value: number;
   labels?: Record<string, string>;
+  type: "counter" | "gauge" | "histogram";
   timestamp: number;
 }
 
 class MetricsCollector {
   private metrics: MetricData[] = [];
 
+  private record(
+    type: "counter" | "gauge" | "histogram",
+    name: string,
+    value: number,
+    labels?: Record<string, string>
+  ) {
+    const metric: MetricData = { name, value, labels, type, timestamp: Date.now() };
+    this.metrics.push(metric);
+
+    // Prevent unbounded memory growth
+    if (this.metrics.length > 50_000) {
+      this.metrics = this.metrics.slice(-25_000);
+    }
+
+    securityLogger.info(`Metrics: ${type} recorded`, { name, value, labels });
+  }
+
   counter(name: string, labels?: Record<string, string>) {
-    this.increment(name, 1, labels);
+    this.record("counter", name, 1, labels);
   }
 
   increment(name: string, value: number = 1, labels?: Record<string, string>) {
-    const metric: MetricData = {
-      name,
-      value,
-      labels,
-      timestamp: Date.now(),
-    };
-    this.metrics.push(metric);
-    securityLogger.info("Metrics: Counter incremented", { metric: name, value, labels });
+    this.record("counter", name, value, labels);
   }
 
   gauge(name: string, value: number, labels?: Record<string, string>) {
-    const metric: MetricData = {
-      name,
-      value,
-      labels,
-      timestamp: Date.now(),
-    };
-    this.metrics.push(metric);
-    securityLogger.info("Metrics: Gauge set", { metric: name, value, labels });
+    this.record("gauge", name, value, labels);
   }
 
   histogram(name: string, value: number, labels?: Record<string, string>) {
-    const metric: MetricData = {
-      name: `${name}_duration`,
-      value,
-      labels,
-      timestamp: Date.now(),
-    };
-    this.metrics.push(metric);
-    securityLogger.info("Metrics: Histogram recorded", { metric: name, duration: value, labels });
+    this.record("histogram", `${name}_duration_ms`, value, labels);
   }
 
   getMetrics(): MetricData[] {
@@ -89,11 +90,9 @@ class MetricsCollector {
 
 export const metrics = new MetricsCollector();
 
-/**
- * Performance monitoring middleware
- */
+// --- Performance Monitoring Middleware ---
 export function performanceMonitoring() {
-  return (req: Request, res: Response, next: any) => {
+  return (req: Request, res: Response, next: NextFunction) => {
     const startTime = Date.now();
     const originalEnd = res.end.bind(res);
 
@@ -110,13 +109,16 @@ export function performanceMonitoring() {
         status_code: res.statusCode.toString(),
       });
 
-      metrics.histogram("http_request_duration_ms", duration, {
+      metrics.histogram("http_request_duration", duration, {
         method: req.method,
         route: req.path,
       });
 
       if (duration > 5000) {
-        sentry.captureMessage(`Slow request detected: ${req.method} ${req.path}`, "warning");
+        sentry.captureMessage(
+          `Slow request detected: ${req.method} ${req.path} (${duration}ms)`,
+          "warning"
+        );
         securityLogger.warn("Performance: Slow request detected", {
           method: req.method,
           path: req.path,
@@ -145,11 +147,9 @@ export function performanceMonitoring() {
   };
 }
 
-/**
- * Error tracking middleware
- */
+// --- Error Tracking Middleware ---
 export function errorTracking() {
-  return (error: Error, req: Request, res: Response, next: any) => {
+  return (error: Error, req: Request, res: Response, next: NextFunction) => {
     sentry.setContext("request", {
       method: req.method,
       url: req.url,
@@ -185,26 +185,26 @@ export function errorTracking() {
   };
 }
 
-/**
- * Health check endpoints for monitoring
- */
+// --- Health Check Endpoints ---
 export function setupHealthChecks(app: any) {
-  app.get("/health", (req: Request, res: Response) => {
-    const healthStatus = {
+  app.get("/health", (_req: Request, res: Response) => {
+    res.json({
       status: "healthy",
       timestamp: new Date().toISOString(),
       uptime: process.uptime(),
       version: process.env.npm_package_version || "1.0.0",
       environment: process.env.NODE_ENV || "development",
-    };
-    res.json(healthStatus);
+    });
   });
 
-  app.get("/health/detailed", (req: Request, res: Response) => {
+  app.get("/health/detailed", async (_req: Request, res: Response) => {
     const memoryUsage = process.memoryUsage();
     const cpuUsage = process.cpuUsage();
 
-    const detailedHealth = {
+    // TODO: Replace with real DB ping (ex: SELECT 1)
+    const dbHealthy = true;
+
+    res.json({
       status: "healthy",
       timestamp: new Date().toISOString(),
       uptime: process.uptime(),
@@ -221,48 +221,41 @@ export function setupHealthChecks(app: any) {
         system: cpuUsage.system,
       },
       database: {
-        status: "connected", // TODO: Add real DB health check
+        status: dbHealthy ? "connected" : "disconnected",
       },
-    };
-
-    res.json(detailedHealth);
+    });
   });
 
-  app.get("/metrics", (req: Request, res: Response) => {
-    const collectedMetrics = metrics.getMetrics();
-    let prometheusMetrics = "";
-    const metricGroups: Record<string, MetricData[]> = {};
+  app.get("/metrics", (_req: Request, res: Response) => {
+    const collected = metrics.getMetrics();
+    let output = "";
 
-    collectedMetrics.forEach((metric) => {
-      if (!metricGroups[metric.name]) {
-        metricGroups[metric.name] = [];
-      }
-      metricGroups[metric.name].push(metric);
+    const grouped: Record<string, MetricData[]> = {};
+    collected.forEach((m) => {
+      if (!grouped[m.name]) grouped[m.name] = [];
+      grouped[m.name].push(m);
     });
 
-    Object.entries(metricGroups).forEach(([name, metricList]) => {
-      prometheusMetrics += `# TYPE ${name} counter\n`;
-      metricList.forEach((metric) => {
-        const labels = metric.labels
-          ? Object.entries(metric.labels)
+    Object.entries(grouped).forEach(([name, metricsList]) => {
+      output += `# TYPE ${name} ${metricsList[0].type}\n`;
+      metricsList.forEach((m) => {
+        const labels = m.labels
+          ? `{${Object.entries(m.labels)
               .map(([k, v]) => `${k}="${v}"`)
-              .join(",")
+              .join(",")}}`
           : "";
-        const labelStr = labels ? `{${labels}}` : "";
-        prometheusMetrics += `${name}${labelStr} ${metric.value}\n`;
+        output += `${name}${labels} ${m.value}\n`;
       });
     });
 
     res.set("Content-Type", "text/plain");
-    res.send(prometheusMetrics);
+    res.send(output);
   });
 
-  securityLogger.info("Health check endpoints configured");
+  securityLogger.info("Health check & metrics endpoints configured");
 }
 
-/**
- * Security alerts configuration
- */
+// --- Security Alerts ---
 export interface SecurityAlert {
   level: "info" | "warning" | "critical";
   type: string;
@@ -282,22 +275,19 @@ class SecurityAlerting {
       details,
       timestamp: new Date().toISOString(),
     };
-
     this.alerts.push(alert);
 
-    (securityLogger as any)[level](`Security Alert: ${type}`, {
-      message,
-      details,
-    });
+    // Trim alerts buffer
+    if (this.alerts.length > 1000) this.alerts = this.alerts.slice(-500);
 
+    // Route to logger
+    (securityLogger as any)[level](`Security Alert: ${type}`, { message, details });
+
+    // Route to Sentry
     if (level === "critical") {
       sentry.captureMessage(`CRITICAL SECURITY ALERT: ${message}`, "error");
     } else if (level === "warning") {
       sentry.captureMessage(`Security Warning: ${message}`, "warning");
-    }
-
-    if (this.alerts.length > 1000) {
-      this.alerts = this.alerts.slice(-1000);
     }
   }
 
@@ -306,12 +296,13 @@ class SecurityAlerting {
   }
 
   getCriticalAlerts(): SecurityAlert[] {
-    return this.alerts.filter((alert) => alert.level === "critical");
+    return this.alerts.filter((a) => a.level === "critical");
   }
 }
 
 export const securityAlerting = new SecurityAlerting();
 
+// --- Business-Level Metrics Shortcuts ---
 export const businessMetrics = {
   casePassportCreated: () => metrics.counter("case_passports_created_total"),
   documentUploaded: () => metrics.counter("documents_uploaded_total"),
@@ -322,7 +313,7 @@ export const businessMetrics = {
     metrics.counter("audit_log_entries_total", { action }),
 
   databaseQueryTime: (operation: string, duration: number) =>
-    metrics.histogram("database_query_duration_ms", duration, { operation }),
+    metrics.histogram("database_query", duration, { operation }),
 
   authFailure: (reason: string) => metrics.counter("auth_failures_total", { reason }),
   accessDenied: (resource: string) =>
