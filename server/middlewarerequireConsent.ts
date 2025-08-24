@@ -2,19 +2,35 @@ import { Request, Response, NextFunction } from "express";
 import { db } from "./db";
 import { consents } from "../shared/schema/consents";
 import { eq, and } from "drizzle-orm";
+import { securityLogger } from "./security";
 
 /**
- * Middleware to enforce explicit consent before accessing a route
+ * Extended request type to safely handle authenticated users
+ */
+interface AuthenticatedRequest extends Request {
+  user?: {
+    id?: string;
+    role?: string;
+    [key: string]: any;
+  };
+}
+
+/**
+ * Middleware factory to enforce explicit consent before accessing a route
+ * @param consentType - Type of consent required (e.g., "gdpr_data_processing")
  */
 export const requireConsent = (consentType: string) => {
-  return async (req: Request, res: Response, next: NextFunction) => {
+  return async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     try {
-      // Safely extract user ID from extended request object
-      const user = (req as any).user; // You can replace 'any' with a custom type
+      // Resolve user ID from multiple possible sources
       const userId: string | undefined =
-        user?.id || req.body.user_id || req.query.user_id;
+        req.user?.id || (req.body?.user_id as string) || (req.query?.user_id as string);
 
       if (!userId) {
+        securityLogger.warn("Consent check failed: missing user ID", {
+          path: req.path,
+          consentType,
+        });
         return res.status(401).json({ error: "User ID required" });
       }
 
@@ -31,14 +47,22 @@ export const requireConsent = (consentType: string) => {
         .limit(1);
 
       if (!result || result.length === 0) {
-        return res
-          .status(403)
-          .json({ error: `Consent required: ${consentType}` });
+        securityLogger.warn("Consent check failed: consent not found", {
+          userId,
+          path: req.path,
+          consentType,
+        });
+        return res.status(403).json({ error: `Consent required: ${consentType}` });
       }
 
+      // ✅ Consent verified, continue
       next();
     } catch (err) {
-      console.error("Error in requireConsent middleware:", err);
+      securityLogger.error("Error in requireConsent middleware", {
+        path: req.path,
+        consentType,
+        error: err instanceof Error ? err.message : String(err),
+      });
       res.status(500).json({ error: "Internal server error" });
     }
   };
