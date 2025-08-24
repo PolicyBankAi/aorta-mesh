@@ -1,12 +1,37 @@
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { FileUp, AlertTriangle, Check, Share } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatDistanceToNow } from "date-fns";
+import { toast } from "@/components/ui/use-toast";
+import {
+  FileUp,
+  AlertTriangle,
+  Check,
+  Share,
+  FilePlus,
+} from "lucide-react";
+
+interface Activity {
+  id: string;
+  type:
+    | "document_uploaded"
+    | "case_passport_created"
+    | "qa_alert_created"
+    | "audit_binder_completed"
+    | "case_passport_shared";
+  message: string;
+  caseId?: string;
+  user: {
+    id: string;
+    name: string;
+    role: string;
+  };
+  createdAt: string;
+}
 
 const activityIcons = {
   document_uploaded: FileUp,
-  case_passport_created: FileUp,
+  case_passport_created: FilePlus,
   qa_alert_created: AlertTriangle,
   audit_binder_completed: Check,
   case_passport_shared: Share,
@@ -21,23 +46,25 @@ const activityColors = {
 } as const;
 
 export default function RecentActivity() {
-  const { data: activities, isLoading } = useQuery({
-    queryKey: ['/api/activity-logs'],
+  const { data: activities, isLoading, isError } = useQuery<Activity[]>({
+    queryKey: ["/api/activity-logs"],
     queryFn: async () => {
-      const response = await fetch('/api/activity-logs?limit=10', {
-        credentials: 'include',
+      const response = await fetch("/api/activity-logs?limit=10", {
+        credentials: "include",
       });
-      if (!response.ok) throw new Error('Failed to fetch activity logs');
+      if (!response.ok) throw new Error("Failed to fetch activity logs");
       return response.json();
     },
   });
 
   if (isLoading) {
     return (
-      <Card className="bg-black border-cyan-400 shadow rounded-lg" data-testid="recent-activity-loading">
+      <Card className="bg-black border-cyan-400 shadow rounded-lg">
         <CardHeader className="border-b border-cyan-400">
           <CardTitle className="text-cyan-400">Recent Activity</CardTitle>
-          <p className="text-sm text-cyan-300">Latest updates across all case passports</p>
+          <p className="text-sm text-cyan-300">
+            Latest updates across all case passports
+          </p>
         </CardHeader>
         <CardContent className="p-6">
           <div className="space-y-4">
@@ -56,49 +83,59 @@ export default function RecentActivity() {
     );
   }
 
+  if (isError || !activities || activities.length === 0) {
+    return (
+      <Card className="bg-black border-cyan-400 shadow rounded-lg">
+        <CardHeader className="border-b border-cyan-400">
+          <CardTitle className="text-cyan-400">Recent Activity</CardTitle>
+        </CardHeader>
+        <CardContent className="p-6">
+          <p className="text-sm text-cyan-300">No recent activity found.</p>
+        </CardContent>
+      </Card>
+    );
+  }
+
   return (
-    <Card className="bg-black border-cyan-400 shadow rounded-lg h-full" data-testid="recent-activity">
+    <Card
+      className="bg-black border-cyan-400 shadow rounded-lg h-full"
+      data-testid="recent-activity"
+    >
       <CardHeader className="border-b border-cyan-400">
         <CardTitle className="text-cyan-400">Recent Activity</CardTitle>
-        <p className="text-sm text-cyan-300">Latest updates across all case passports</p>
+        <p className="text-sm text-cyan-300">
+          Latest updates across all case passports
+        </p>
       </CardHeader>
       <CardContent className="p-6">
-        <div className="space-y-4">
-          <div className="space-y-3">
-            <div className="flex items-center space-x-3 p-3 bg-black border border-cyan-400/30 rounded-lg">
-              <div className="w-2 h-2 bg-cyan-400 rounded-full"></div>
-              <div className="flex-1">
-                <div className="text-sm text-cyan-300">Document uploaded to case #12345</div>
-                <div className="text-xs text-cyan-400/70">2 hours ago</div>
+        <div className="space-y-3">
+          {activities.map((activity) => {
+            const Icon = activityIcons[activity.type] || FileUp;
+            const color = activityColors[activity.type] || "bg-cyan-400";
+
+            return (
+              <div
+                key={activity.id}
+                className="flex items-center space-x-3 p-3 bg-black border border-cyan-400/30 rounded-lg hover:bg-gray-900"
+              >
+                <div
+                  className={`w-8 h-8 flex items-center justify-center rounded-full ${color}`}
+                >
+                  <Icon className="h-4 w-4 text-black" />
+                </div>
+                <div className="flex-1">
+                  <div className="text-sm text-cyan-300">{activity.message}</div>
+                  <div className="text-xs text-cyan-400/70">
+                    {activity.user.name} ({activity.user.role}) •{" "}
+                    {formatDistanceToNow(new Date(activity.createdAt))} ago
+                  </div>
+                </div>
               </div>
-            </div>
-            
-            <div className="flex items-center space-x-3 p-3 bg-black border border-cyan-400/30 rounded-lg">
-              <div className="w-2 h-2 bg-cyan-400 rounded-full"></div>
-              <div className="flex-1">
-                <div className="text-sm text-cyan-300">Case passport created for DN-2024-0893</div>
-                <div className="text-xs text-cyan-400/70">4 hours ago</div>
-              </div>
-            </div>
-            
-            <div className="flex items-center space-x-3 p-3 bg-black border border-cyan-400/30 rounded-lg">
-              <div className="w-2 h-2 bg-yellow-400 rounded-full"></div>
-              <div className="flex-1">
-                <div className="text-sm text-cyan-300">QA alert triggered for missing signature</div>
-                <div className="text-xs text-cyan-400/70">6 hours ago</div>
-              </div>
-            </div>
-            
-            <div className="flex items-center space-x-3 p-3 bg-black border border-cyan-400/30 rounded-lg">
-              <div className="w-2 h-2 bg-purple-400 rounded-full"></div>
-              <div className="flex-1">
-                <div className="text-sm text-cyan-300">Chain-of-custody updated</div>
-                <div className="text-xs text-cyan-400/70">8 hours ago</div>
-              </div>
-            </div>
-          </div>
+            );
+          })}
         </div>
       </CardContent>
     </Card>
   );
 }
+
