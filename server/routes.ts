@@ -5,19 +5,19 @@ import { setupAuth, isAuthenticated } from "./replitAuth";
 import { auditLogger, logDataAccess, logPhiAccess, securityLogger } from "./security";
 import { PHIEncryption } from "./encryptionService";
 import { Permission, UserRole, hasPermission } from "@shared/rbac";
-import { 
-  insertCasePassportSchema, 
-  insertDonorSchema, 
-  insertDocumentSchema,
-  insertQaAlertSchema,
-  insertActivityLogSchema,
-  insertChainOfCustodySchema 
-} from "@shared/schema";
 import {
   ObjectStorageService,
   ObjectNotFoundError,
   ObjectPermission,
 } from "./objectStorage";
+
+// ✅ TEMP STUBS (until schemas are defined in shared/schema.ts)
+const insertCasePassportSchema = {};
+const insertDonorSchema = {};
+const insertDocumentSchema = {};
+const insertQaAlertSchema = {};
+const insertActivityLogSchema = {};
+const insertChainOfCustodySchema = {};
 
 interface AuthRequest extends Request {
   user?: {
@@ -31,7 +31,6 @@ interface AuthRequest extends Request {
     role?: UserRole;
   };
   session: {
-    demoUser?: any;
     [key: string]: any;
   };
 }
@@ -71,6 +70,7 @@ function requirePermission(permission: Permission) {
 export async function registerRoutes(app: Express): Promise<Server> {
   await setupAuth(app);
 
+  // ✅ Authenticated user profile
   app.get(
     "/api/auth/user",
     isAuthenticated,
@@ -87,14 +87,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         let user = await storage.getUser(userId);
         if (!user) {
+          // If user doesn’t exist yet → create baseline record
           user = await storage.upsertUser({
             id: userId,
             email: req.user?.claims?.email,
             firstName: req.user?.claims?.first_name,
             lastName: req.user?.claims?.last_name,
             profileImageUrl: req.user?.claims?.profile_image_url,
-            role: "coordinator",
-            organizationId: "org-1",
+            role: "coordinator", // default role, adjust as needed
+            organizationId: "org-1", // default org, adjust as needed
           });
         }
 
@@ -110,57 +111,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   );
 
-  if (process.env.NODE_ENV === "development") {
-    app.head("/api/demo/login", (_req, res) => res.status(200).end());
-
-    app.post("/api/demo/login", auditLogger("demo_login"), async (req: AuthRequest, res) => {
+  // ✅ Dashboard stats route
+  app.get(
+    "/api/dashboard/stats",
+    isAuthenticated,
+    auditLogger("dashboard_stats_access"),
+    async (req: AuthRequest, res) => {
       try {
-        const demoUser = {
-          id: "demo-user-dev",
-          email: "dev@aortamesh.com",
-          firstName: "Development",
-          lastName: "User",
-          role: "admin",
-          organizationId: "org-1",
-          profileImageUrl: null,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        };
-
-        req.session.demoUser = demoUser;
-        res.json({ success: true, user: demoUser });
+        logDataAccess(req, "dashboard_stats", "read");
+        const userId = req.user?.claims?.sub;
+        const user = userId ? await storage.getUser(userId) : null;
+        const stats = await storage.getDashboardStats(user?.organizationId || "org-1");
+        res.json(stats);
       } catch (error) {
-        securityLogger.error("Demo login failed", { error });
-        res.status(500).json({ message: "Demo login failed" });
+        securityLogger.error("Error fetching dashboard stats", { error });
+        res.status(500).json({ message: "Failed to fetch dashboard statistics" });
       }
-    });
-
-    app.post("/api/demo/logout", auditLogger("demo_logout"), async (req: AuthRequest, res) => {
-      try {
-        req.session.demoUser = undefined;
-        res.json({ success: true });
-      } catch (error) {
-        securityLogger.error("Demo logout failed", { error });
-        res.status(500).json({ message: "Demo logout failed" });
-      }
-    });
-  }
-
-  app.get("/api/dashboard/stats", isAuthenticated, auditLogger("dashboard_stats_access"), async (req: AuthRequest, res) => {
-    try {
-      logDataAccess(req, "dashboard_stats", "read");
-      const userId = req.user?.claims?.sub;
-      const user = userId ? await storage.getUser(userId) : null;
-      const stats = await storage.getDashboardStats(user?.organizationId || "org-1");
-      res.json(stats);
-    } catch (error) {
-      securityLogger.error("Error fetching dashboard stats", { error });
-      res.status(500).json({ message: "Failed to fetch dashboard statistics" });
     }
-  });
-
-  // ⬇️ Case passports, donors, documents, QA alerts, activity logs, chain of custody, and object storage routes stay as in your version.
-  // All I changed was unified error handling (securityLogger + consistent 500/403/401 responses).
+  );
 
   const httpServer = createServer(app);
   return httpServer;
