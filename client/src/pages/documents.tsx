@@ -1,8 +1,10 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { FileText, Upload, Clock, CheckCircle, AlertCircle, Plus } from "lucide-react";
+import { ObjectUploader } from "@/components/object-uploader";
+import { useAuth } from "@/hooks/useAuth";
 
 // ✅ Define types for API responses
 type CasePassport = {
@@ -23,6 +25,9 @@ type Document = {
 };
 
 export default function Documents() {
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+
   // ✅ Strongly typed queries
   const { data: casePassports, isLoading: loadingCases } = useQuery<CasePassport[]>({
     queryKey: ["/api/case-passports"],
@@ -55,6 +60,11 @@ export default function Documents() {
       default:
         return <Badge variant="outline">{status}</Badge>;
     }
+  };
+
+  const handleReview = async (docId: string) => {
+    await fetch(`/api/documents/${docId}/review`, { method: "POST" });
+    queryClient.invalidateQueries(["/api/documents"]);
   };
 
   if (isLoading || loadingCases) {
@@ -111,42 +121,26 @@ export default function Documents() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid gap-4 md:grid-cols-2">
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-white">Document Type</label>
-              <select
-                className="w-full p-2 rounded-md bg-gray-800 border-gray-700 text-white"
-                data-testid="select-document-type"
-              >
-                <option value="serology">Serology Results</option>
-                <option value="consent">Consent Form</option>
-                <option value="recovery">Recovery Report</option>
-                <option value="pathology">Pathology Report</option>
-                <option value="imaging">Medical Imaging</option>
-                <option value="other">Other</option>
-              </select>
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-white">Case Passport</label>
-              <select
-                className="w-full p-2 rounded-md bg-gray-800 border-gray-700 text-white"
-                data-testid="select-case-passport"
-              >
-                {casePassports?.map((casePassport) => (
-                  <option key={casePassport.id} value={casePassport.id}>
-                    {casePassport.donorNumber} - {casePassport.status}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-
-          <Button className="w-full" data-testid="button-upload-document">
-            <div className="flex items-center justify-center gap-2 py-8">
-              <Plus className="w-6 h-6" />
-              <span>Upload New Document</span>
-            </div>
-          </Button>
+          {casePassports && casePassports.length > 0 ? (
+            <ObjectUploader
+              caseId={casePassports[0].id} // default to first case for now, could add selector
+              userId={user?.id ?? ""}
+              userRole={user?.role ?? ""}
+              onGetUploadParameters={async () => {
+                const res = await fetch(`/api/upload-url`, { method: "POST" });
+                return await res.json();
+              }}
+              onComplete={() => queryClient.invalidateQueries(["/api/documents"])}
+              buttonClassName="w-full bg-gradient-to-r from-cyan-600 to-teal-600 hover:from-cyan-700 hover:to-teal-700 text-white py-3"
+            >
+              <div className="flex items-center justify-center gap-2 py-8">
+                <Plus className="w-6 h-6" />
+                <span>Upload New Document</span>
+              </div>
+            </ObjectUploader>
+          ) : (
+            <p className="text-gray-400 text-sm">No case passports available</p>
+          )}
         </CardContent>
       </Card>
 
@@ -167,15 +161,17 @@ export default function Documents() {
                 {getStatusBadge(doc.status)}
               </CardTitle>
               <CardDescription>
-                Type: {doc.documentType} • Case: {doc.casePassportId}
+                Type: {doc.documentType} • Case:{" "}
+                {casePassports?.find((c) => c.id === doc.casePassportId)?.donorNumber ??
+                  doc.casePassportId}
               </CardDescription>
             </CardHeader>
             <CardContent>
               <div className="space-y-2 text-sm text-muted-foreground">
-                <p>Uploaded: {new Date(doc.uploadedAt).toLocaleDateString()}</p>
+                <p>Uploaded: {new Date(doc.uploadedAt).toLocaleString()}</p>
                 <p>Size: {doc.fileSize ? `${Math.round(doc.fileSize / 1024)} KB` : "N/A"}</p>
                 {doc.reviewedAt && (
-                  <p>Reviewed: {new Date(doc.reviewedAt).toLocaleDateString()}</p>
+                  <p>Reviewed: {new Date(doc.reviewedAt).toLocaleString()}</p>
                 )}
               </div>
               <div className="mt-4 flex gap-2">
@@ -183,7 +179,12 @@ export default function Documents() {
                   View
                 </Button>
                 {doc.status === "pending" && (
-                  <Button size="sm" variant="outline" data-testid={`button-review-${doc.id}`}>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => handleReview(doc.id)}
+                    data-testid={`button-review-${doc.id}`}
+                  >
                     Review
                   </Button>
                 )}
