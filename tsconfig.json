@@ -1,27 +1,51 @@
 {
   "include": ["server/**/*", "shared/**/*"],
-  "exclude": ["node_modules", "build", "dist", "client", "**/*.test.ts"],
+  "exclude": [
+    "node_modules",
+    "build",
+    "dist",
+    "client",
+    "**/*.test.ts"
+  ],
   "compilerOptions": {
     "incremental": true,
-    "tsBuildInfoFile": "./node_modules/typescript/tsbuildinfo",
+    "tsBuildInfoFile": "./node_modules/.cache/tsbuildinfo", 
+
+    /* Language & Module */
     "module": "ESNext",
     "target": "ESNext",
-    "strict": true,
-    "lib": ["esnext", "dom", "dom.iterable"],
+    "moduleResolution": "bundler",
     "jsx": "preserve",
+    "lib": ["ESNext", "DOM", "DOM.Iterable"],
+
+    /* Strictness & Interop */
+    "strict": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
-    "moduleResolution": "bundler",
+    "forceConsistentCasingInFileNames": true,
+
+    /* Output */
+    "outDir": "./dist",
+    "rootDir": "./server",
+    "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true,
+
+    /* Paths / Aliases */
     "baseUrl": ".",
     "types": ["node", "vite/client"],
-    "outDir": "dist",
-    "rootDir": ".",
     "paths": {
       "@/*": ["./client/src/*"],
       "@shared/*": ["./shared/*"]
     },
+
+    /* Plugins */
     "plugins": [
       { "transform": "typescript-transform-paths", "afterDeclarations": true }
-    ]
+    ],
+
+    /* JSON Imports */
+    "resolveJsonModule": true,
+    "isolatedModules": true
   }
 }
