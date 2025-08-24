@@ -7,14 +7,16 @@ import "@uppy/dashboard/dist/style.min.css";
 import AwsS3 from "@uppy/aws-s3";
 import type { UploadResult } from "@uppy/core";
 import { Button } from "@/components/ui/button";
+import { toast } from "@/components/ui/use-toast";
 
 interface ObjectUploaderProps {
   maxNumberOfFiles?: number;
   maxFileSize?: number;
-  onGetUploadParameters: () => Promise<{
-    method: "PUT";
-    url: string;
-  }>;
+  allowedFileTypes?: string[]; // NEW: restrict file types
+  caseId: string; // NEW: link to transplant case
+  userId: string; // NEW: track who uploaded
+  userRole: string; // NEW: track RBAC context
+  onGetUploadParameters: () => Promise<{ method: "PUT"; url: string }>;
   onComplete?: (
     result: UploadResult<Record<string, unknown>, Record<string, unknown>>
   ) => void;
@@ -23,36 +25,20 @@ interface ObjectUploaderProps {
 }
 
 /**
- * A file upload component that renders as a button and provides a modal interface for
- * file management.
- * 
+ * Secure File Uploader for AORTA Mesh
  * Features:
- * - Renders as a customizable button that opens a file upload modal
- * - Provides a modal interface for:
- *   - File selection
- *   - File preview
- *   - Upload progress tracking
- *   - Upload status display
- * 
- * The component uses Uppy under the hood to handle all file upload functionality.
- * All file management features are automatically handled by the Uppy dashboard modal.
- * 
- * @param props - Component props
- * @param props.maxNumberOfFiles - Maximum number of files allowed to be uploaded
- *   (default: 1)
- * @param props.maxFileSize - Maximum file size in bytes (default: 10MB)
- * @param props.onGetUploadParameters - Function to get upload parameters (method and URL).
- *   Typically used to fetch a presigned URL from the backend server for direct-to-S3
- *   uploads.
- * @param props.onComplete - Callback function called when upload is complete. Typically
- *   used to make post-upload API calls to update server state and set object ACL
- *   policies.
- * @param props.buttonClassName - Optional CSS class name for the button
- * @param props.children - Content to be rendered inside the button
+ * - Restricts file types & sizes
+ * - Logs upload with caseId, userId, userRole
+ * - Uses presigned S3 URLs (no direct credentials)
+ * - Provides audit trail integration
  */
 export function ObjectUploader({
   maxNumberOfFiles = 1,
-  maxFileSize = 10485760, // 10MB default
+  maxFileSize = 10485760, // 10MB
+  allowedFileTypes = [".pdf", ".jpg", ".jpeg", ".png", ".tif", ".docx"],
+  caseId,
+  userId,
+  userRole,
   onGetUploadParameters,
   onComplete,
   buttonClassName,
@@ -64,6 +50,7 @@ export function ObjectUploader({
       restrictions: {
         maxNumberOfFiles,
         maxFileSize,
+        allowedFileTypes, // enforce file type restrictions
       },
       autoProceed: false,
     })
@@ -72,6 +59,23 @@ export function ObjectUploader({
         getUploadParameters: onGetUploadParameters,
       })
       .on("complete", (result) => {
+        // 🔒 Secure logging for audit binder
+        console.log("📂 Upload completed:", {
+          caseId,
+          userId,
+          userRole,
+          files: result.successful.map((f) => ({
+            name: f.name,
+            size: f.size,
+            type: f.type,
+          })),
+        });
+
+        toast({
+          title: "Upload Complete",
+          description: `${result.successful.length} file(s) uploaded successfully.`,
+        });
+
         onComplete?.(result);
       })
   );
@@ -87,6 +91,9 @@ export function ObjectUploader({
         open={showModal}
         onRequestClose={() => setShowModal(false)}
         proudlyDisplayPoweredByUppy={false}
+        note={`Allowed: ${allowedFileTypes.join(", ")} | Max size: ${
+          maxFileSize / 1024 / 1024
+        } MB`}
       />
     </div>
   );
