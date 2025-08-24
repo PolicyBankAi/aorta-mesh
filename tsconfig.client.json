@@ -1,0 +1,18 @@
+{
+  "extends": "./tsconfig.json",
+  "include": ["client/**/*"],
+  "exclude": [
+    "node_modules",
+    "dist",
+    "build",
+    "server",
+    "shared",
+    "**/*.test.ts"
+  ],
+  "compilerOptions": {
+    "jsx": "react-jsx", 
+    "types": ["vite/client", "node"],
+    "outDir": "./dist/client",
+    "rootDir": "./client"
+  }
+}
