@@ -8,12 +8,83 @@ import {
   boolean,
   integer,
   numeric,
-  index
+  index,
 } from "drizzle-orm/pg-core";
 
 /**
- * PHI Access Logs - HIPAA compliance
+ * ─────────────────────────────
+ * Core Tables
+ * ─────────────────────────────
  */
+
+export const users = pgTable("users", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  email: varchar("email").notNull(),
+  role: varchar("role").notNull(),
+  firstName: varchar("first_name"),
+  lastName: varchar("last_name"),
+  phoneNumber: varchar("phone_number"),
+  organizationId: uuid("organization_id"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const organizations = pgTable("organizations", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  name: varchar("name").notNull(),
+  address: text("address"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const donors = pgTable("donors", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  name: varchar("name").notNull(),
+  dob: timestamp("dob"),
+  bloodType: varchar("blood_type"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const documents = pgTable("documents", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  title: varchar("title").notNull(),
+  url: varchar("url").notNull(),
+  createdById: uuid("created_by_id").references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const casePassports = pgTable("case_passports", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  donorId: uuid("donor_id").references(() => donors.id),
+  status: varchar("status").default("open"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const qaAlerts = pgTable("qa_alerts", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  casePassportId: uuid("case_passport_id").references(() => casePassports.id),
+  type: varchar("type").notNull(),
+  description: text("description"),
+  status: varchar("status").default("open"),
+  createdById: uuid("created_by_id").references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const activityLogs = pgTable("activity_logs", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: uuid("user_id").references(() => users.id),
+  action: varchar("action").notNull(),
+  resourceType: varchar("resource_type"),
+  resourceId: uuid("resource_id"),
+  details: jsonb("details"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+/**
+ * ─────────────────────────────
+ * Compliance & Security Tables
+ * ─────────────────────────────
+ */
+
 export const phiAccessLogs = pgTable(
   "phi_access_logs",
   {
@@ -37,12 +108,9 @@ export const phiAccessLogs = pgTable(
   (table) => ({
     userIdx: index("phi_access_user_idx").on(table.userId),
     resourceIdx: index("phi_access_resource_idx").on(table.resourceId),
-  }),
+  })
 );
 
-/**
- * Consent Records
- */
 export const consentRecords = pgTable(
   "consent_records",
   {
@@ -68,32 +136,23 @@ export const consentRecords = pgTable(
   },
   (table) => ({
     donorIdx: index("consent_records_donor_idx").on(table.donorId),
-  }),
+  })
 );
 
-/**
- * Data Retention Policies
- */
-export const dataRetentionPolicies = pgTable(
-  "data_retention_policies",
-  {
-    id: uuid("id").primaryKey().defaultRandom(),
-    dataType: varchar("data_type").notNull(),
-    retentionPeriod: integer("retention_period").notNull(),
-    retentionBasis: varchar("retention_basis"),
-    destructionMethod: varchar("destruction_method"),
-    legalHoldStatus: boolean("legal_hold_status").default(false),
-    description: text("description"),
-    effectiveDate: timestamp("effective_date").notNull(),
-    reviewDate: timestamp("review_date"),
-    createdAt: timestamp("created_at").defaultNow().notNull(),
-    updatedAt: timestamp("updated_at").defaultNow().notNull(),
-  },
-);
+export const dataRetentionPolicies = pgTable("data_retention_policies", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  dataType: varchar("data_type").notNull(),
+  retentionPeriod: integer("retention_period").notNull(),
+  retentionBasis: varchar("retention_basis"),
+  destructionMethod: varchar("destruction_method"),
+  legalHoldStatus: boolean("legal_hold_status").default(false),
+  description: text("description"),
+  effectiveDate: timestamp("effective_date").notNull(),
+  reviewDate: timestamp("review_date"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
 
-/**
- * Break-Glass Access (Emergency override)
- */
 export const breakGlassAccess = pgTable(
   "break_glass_access",
   {
@@ -117,12 +176,9 @@ export const breakGlassAccess = pgTable(
   (table) => ({
     userIdx: index("break_glass_user_idx").on(table.userId),
     resourceIdx: index("break_glass_resource_idx").on(table.resourceId),
-  }),
+  })
 );
 
-/**
- * Tissue Specifications - AATB compliance
- */
 export const tissueSpecifications = pgTable(
   "tissue_specifications",
   {
@@ -134,7 +190,10 @@ export const tissueSpecifications = pgTable(
     processingMethod: varchar("processing_method"),
     sterilizationMethod: varchar("sterilization_method"),
     preservationMethod: varchar("preservation_method"),
-    storageTemperature: numeric("storage_temperature", { precision: 5, scale: 2 }),
+    storageTemperature: numeric("storage_temperature", {
+      precision: 5,
+      scale: 2,
+    }),
     storageLocation: varchar("storage_location"),
     expirationDate: timestamp("expiration_date"),
     qualityGrade: varchar("quality_grade"),
@@ -159,39 +218,30 @@ export const tissueSpecifications = pgTable(
   },
   (table) => ({
     caseIdx: index("tissue_spec_case_idx").on(table.casePassportId),
-  }),
+  })
 );
 
-/**
- * Compliance Audits
- */
-export const complianceAudits = pgTable(
-  "compliance_audits",
-  {
-    id: uuid("id").primaryKey().defaultRandom(),
-    auditType: varchar("audit_type").notNull(),
-    auditScope: varchar("audit_scope"),
-    auditPeriodStart: timestamp("audit_period_start").notNull(),
-    auditPeriodEnd: timestamp("audit_period_end").notNull(),
-    auditorName: varchar("auditor_name"),
-    auditorOrganization: varchar("auditor_organization"),
-    findings: jsonb("findings"),
-    nonConformities: jsonb("non_conformities"),
-    correctiveActions: jsonb("corrective_actions"),
-    riskAssessment: jsonb("risk_assessment"),
-    complianceScore: numeric("compliance_score", { precision: 5, scale: 2 }),
-    status: varchar("status").default("in_progress"),
-    reportUrl: varchar("report_url"),
-    nextAuditDate: timestamp("next_audit_date"),
-    createdById: uuid("created_by_id").references(() => users.id),
-    createdAt: timestamp("created_at").defaultNow().notNull(),
-    updatedAt: timestamp("updated_at").defaultNow().notNull(),
-  },
-);
+export const complianceAudits = pgTable("compliance_audits", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  auditType: varchar("audit_type").notNull(),
+  auditScope: varchar("audit_scope"),
+  auditPeriodStart: timestamp("audit_period_start").notNull(),
+  auditPeriodEnd: timestamp("audit_period_end").notNull(),
+  auditorName: varchar("auditor_name"),
+  auditorOrganization: varchar("auditor_organization"),
+  findings: jsonb("findings"),
+  nonConformities: jsonb("non_conformities"),
+  correctiveActions: jsonb("corrective_actions"),
+  riskAssessment: jsonb("risk_assessment"),
+  complianceScore: numeric("compliance_score", { precision: 5, scale: 2 }),
+  status: varchar("status").default("in_progress"),
+  reportUrl: varchar("report_url"),
+  nextAuditDate: timestamp("next_audit_date"),
+  createdById: uuid("created_by_id").references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
 
-/**
- * Chain of Custody
- */
 export const chainOfCustody = pgTable(
   "chain_of_custody",
   {
@@ -235,5 +285,5 @@ export const chainOfCustody = pgTable(
     caseIdx: index("coc_case_idx").on(table.casePassportId),
     handlerIdx: index("coc_handler_idx").on(table.handlerId),
     recipientIdx: index("coc_recipient_idx").on(table.recipientId),
-  }),
+  })
 );
