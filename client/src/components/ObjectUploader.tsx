@@ -12,10 +12,10 @@ import { toast } from "@/components/ui/use-toast";
 interface ObjectUploaderProps {
   maxNumberOfFiles?: number;
   maxFileSize?: number;
-  allowedFileTypes?: string[]; // NEW: restrict file types
-  caseId: string; // NEW: link to transplant case
-  userId: string; // NEW: track who uploaded
-  userRole: string; // NEW: track RBAC context
+  allowedFileTypes?: string[];
+  caseId: string;
+  userId: string;
+  userRole: string;
   onGetUploadParameters: () => Promise<{ method: "PUT"; url: string }>;
   onComplete?: (
     result: UploadResult<Record<string, unknown>, Record<string, unknown>>
@@ -26,7 +26,6 @@ interface ObjectUploaderProps {
 
 /**
  * Secure File Uploader for AORTA Mesh
- * Features:
  * - Restricts file types & sizes
  * - Logs upload with caseId, userId, userRole
  * - Uses presigned S3 URLs (no direct credentials)
@@ -50,7 +49,7 @@ export function ObjectUploader({
       restrictions: {
         maxNumberOfFiles,
         maxFileSize,
-        allowedFileTypes, // enforce file type restrictions
+        allowedFileTypes,
       },
       autoProceed: false,
     })
@@ -59,7 +58,6 @@ export function ObjectUploader({
         getUploadParameters: onGetUploadParameters,
       })
       .on("complete", (result) => {
-        // 🔒 Secure logging for audit binder
         console.log("📂 Upload completed:", {
           caseId,
           userId,
