@@ -61,8 +61,13 @@ jobs:
       - name: ♻️ Dedupe
         run: pnpm dedupe
 
-      - name: ✅ Type check
+      # ✅ Type-check backend
+      - name: ✅ Type check (server/shared)
         run: pnpm check
+
+      # ✅ Type-check frontend
+      - name: ✅ Type check (client)
+        run: tsc --noEmit -p tsconfig.client.json
 
       - name: 🏗️ Build
         run: pnpm build
