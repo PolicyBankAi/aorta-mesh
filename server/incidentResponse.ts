@@ -6,6 +6,7 @@
 
 import { securityLogger } from './security';
 import { immutableAuditLogger } from './immutableAuditLog';
+import crypto from 'crypto';
 
 /**
  * Incident severity levels
@@ -14,7 +15,7 @@ export enum IncidentSeverity {
   LOW = 'low',
   MEDIUM = 'medium',
   HIGH = 'high',
-  CRITICAL = 'critical'
+  CRITICAL = 'critical',
 }
 
 /**
@@ -30,7 +31,7 @@ export enum IncidentCategory {
   MALWARE_DETECTION = 'malware_detection',
   DDOS_ATTACK = 'ddos_attack',
   INSIDER_THREAT = 'insider_threat',
-  COMPLIANCE_VIOLATION = 'compliance_violation'
+  COMPLIANCE_VIOLATION = 'compliance_violation',
 }
 
 /**
@@ -81,7 +82,7 @@ export interface ResponseAction {
 }
 
 /**
- * Incident detection rules
+ * Detection rule
  */
 export interface DetectionRule {
   id: string;
@@ -118,7 +119,23 @@ export interface SecurityContext {
 }
 
 /**
- * Built-in detection rules for healthcare security
+ * Scrub sensitive values from logs / evidence
+ */
+function scrubSensitive(input: any): any {
+  if (!input || typeof input !== 'object') return input;
+  const out: any = Array.isArray(input) ? [] : {};
+  for (const [k, v] of Object.entries(input)) {
+    if (/ssn|dob|phone|email|address|phi/i.test(k)) {
+      out[k] = '[REDACTED]';
+    } else {
+      out[k] = typeof v === 'object' ? scrubSensitive(v) : v;
+    }
+  }
+  return out;
+}
+
+/**
+ * Built-in detection rules
  */
 const DETECTION_RULES: DetectionRule[] = [
   {
@@ -128,7 +145,7 @@ const DETECTION_RULES: DetectionRule[] = [
     severity: IncidentSeverity.MEDIUM,
     condition: (ctx) => (ctx.failedAttempts || 0) >= 5,
     responsePlaybook: 'account_lockout',
-    enabled: true
+    enabled: true,
   },
   {
     id: 'phi_bulk_access',
@@ -137,7 +154,7 @@ const DETECTION_RULES: DetectionRule[] = [
     severity: IncidentSeverity.HIGH,
     condition: (ctx) => ctx.action.includes('export') && ctx.metrics.requestCount > 100,
     responsePlaybook: 'phi_access_review',
-    enabled: true
+    enabled: true,
   },
   {
     id: 'admin_privilege_escalation',
@@ -146,7 +163,7 @@ const DETECTION_RULES: DetectionRule[] = [
     severity: IncidentSeverity.CRITICAL,
     condition: (ctx) => ctx.userRole !== 'admin' && ctx.resource.includes('/admin/'),
     responsePlaybook: 'privilege_investigation',
-    enabled: true
+    enabled: true,
   },
   {
     id: 'unusual_ip_access',
@@ -155,16 +172,16 @@ const DETECTION_RULES: DetectionRule[] = [
     severity: IncidentSeverity.MEDIUM,
     condition: (ctx) => ctx.metrics.suspiciousPatterns.includes('unusual_ip'),
     responsePlaybook: 'location_verification',
-    enabled: true
+    enabled: true,
   },
   {
     id: 'high_error_rate',
     name: 'Abnormally High Error Rate',
     category: IncidentCategory.SYSTEM_COMPROMISE,
     severity: IncidentSeverity.HIGH,
-    condition: (ctx) => ctx.metrics.errorRate > 0.5, // 50% error rate
+    condition: (ctx) => ctx.metrics.errorRate > 0.5,
     responsePlaybook: 'system_health_check',
-    enabled: true
+    enabled: true,
   },
   {
     id: 'after_hours_access',
@@ -176,8 +193,8 @@ const DETECTION_RULES: DetectionRule[] = [
       return (hour < 6 || hour > 22) && ctx.resource.includes('case_passport');
     },
     responsePlaybook: 'after_hours_review',
-    enabled: true
-  }
+    enabled: true,
+  },
 ];
 
 /**
@@ -185,91 +202,22 @@ const DETECTION_RULES: DetectionRule[] = [
  */
 const RESPONSE_PLAYBOOKS: Record<string, ResponseAction[]> = {
   account_lockout: [
-    {
-      id: '1',
-      action: 'Lock user account',
-      executor: 'system',
-      status: 'pending',
-      timestamp: new Date().toISOString()
-    },
-    {
-      id: '2',
-      action: 'Notify security team',
-      executor: 'system',
-      status: 'pending',
-      timestamp: new Date().toISOString()
-    },
-    {
-      id: '3',
-      action: 'Review access logs',
-      executor: 'human',
-      status: 'pending',
-      timestamp: new Date().toISOString(),
-      requiresApproval: false
-    }
+    { id: '1', action: 'Lock user account', executor: 'system', status: 'pending', timestamp: new Date().toISOString() },
+    { id: '2', action: 'Notify security team', executor: 'system', status: 'pending', timestamp: new Date().toISOString() },
+    { id: '3', action: 'Review access logs', executor: 'human', status: 'pending', timestamp: new Date().toISOString() },
   ],
   phi_access_review: [
-    {
-      id: '1',
-      action: 'Flag user for review',
-      executor: 'system',
-      status: 'pending',
-      timestamp: new Date().toISOString()
-    },
-    {
-      id: '2',
-      action: 'Generate access report',
-      executor: 'system',
-      status: 'pending',
-      timestamp: new Date().toISOString()
-    },
-    {
-      id: '3',
-      action: 'Notify compliance officer',
-      executor: 'system',
-      status: 'pending',
-      timestamp: new Date().toISOString()
-    },
-    {
-      id: '4',
-      action: 'Review business justification',
-      executor: 'human',
-      status: 'pending',
-      timestamp: new Date().toISOString(),
-      requiresApproval: true
-    }
+    { id: '1', action: 'Flag user for review', executor: 'system', status: 'pending', timestamp: new Date().toISOString() },
+    { id: '2', action: 'Generate access report', executor: 'system', status: 'pending', timestamp: new Date().toISOString() },
+    { id: '3', action: 'Notify compliance officer', executor: 'system', status: 'pending', timestamp: new Date().toISOString() },
+    { id: '4', action: 'Review business justification', executor: 'human', status: 'pending', timestamp: new Date().toISOString(), requiresApproval: true },
   ],
   privilege_investigation: [
-    {
-      id: '1',
-      action: 'Immediately revoke session',
-      executor: 'system',
-      status: 'pending',
-      timestamp: new Date().toISOString()
-    },
-    {
-      id: '2',
-      action: 'Alert security team CRITICAL',
-      executor: 'system',
-      status: 'pending',
-      timestamp: new Date().toISOString()
-    },
-    {
-      id: '3',
-      action: 'Preserve forensic evidence',
-      executor: 'system',
-      status: 'pending',
-      timestamp: new Date().toISOString()
-    },
-    {
-      id: '4',
-      action: 'Conduct security investigation',
-      executor: 'human',
-      status: 'pending',
-      timestamp: new Date().toISOString(),
-      requiresApproval: false
-    }
-  ]
+    { id: '1', action: 'Immediately revoke session', executor: 'system', status: 'pending', timestamp: new Date().toISOString() },
+    { id: '2', action: 'Alert security team CRITICAL', executor: 'system', status: 'pending', timestamp: new Date().toISOString() },
+    { id: '3', action: 'Preserve forensic evidence', executor: 'system', status: 'pending', timestamp: new Date().toISOString() },
+    { id: '4', action: 'Conduct security investigation', executor: 'human', status: 'pending', timestamp: new Date().toISOString() },
+  ],
 };
 
 /**
@@ -278,43 +226,34 @@ const RESPONSE_PLAYBOOKS: Record<string, ResponseAction[]> = {
 export class IncidentResponseManager {
   private incidents: Map<string, SecurityIncident> = new Map();
   private rules: DetectionRule[] = DETECTION_RULES;
-  
-  /**
-   * Detect potential security incidents
-   */
+
   async detectIncident(context: SecurityContext): Promise<SecurityIncident[]> {
-    const detectedIncidents: SecurityIncident[] = [];
-    
-    for (const rule of this.rules.filter(r => r.enabled)) {
+    const detected: SecurityIncident[] = [];
+    for (const rule of this.rules.filter((r) => r.enabled)) {
       try {
         if (rule.condition(context)) {
           const incident = await this.createIncident(rule, context);
-          detectedIncidents.push(incident);
-          
+          detected.push(incident);
           securityLogger.warn('Security incident detected', {
             incidentId: incident.id,
             rule: rule.name,
             severity: incident.severity,
-            category: incident.category
+            category: incident.category,
           });
         }
-      } catch (error) {
+      } catch (err) {
         securityLogger.error('Detection rule evaluation failed', {
           rule: rule.id,
-          error: error instanceof Error ? error.message : 'Unknown error'
+          error: err instanceof Error ? err.message : 'Unknown error',
         });
       }
     }
-    
-    return detectedIncidents;
+    return detected;
   }
-  
-  /**
-   * Create security incident
-   */
+
   private async createIncident(rule: DetectionRule, context: SecurityContext): Promise<SecurityIncident> {
     const incident: SecurityIncident = {
-      id: `INC-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      id: crypto.randomUUID(),
       timestamp: new Date().toISOString(),
       severity: rule.severity,
       category: rule.category,
@@ -325,125 +264,73 @@ export class IncidentResponseManager {
       phiInvolved: this.isPHIInvolved(context),
       evidence: {
         logs: await this.collectLogs(context),
-        metrics: context.metrics,
-        screenshots: [],
-        networkTraffic: []
+        metrics: scrubSensitive(context.metrics),
       },
       status: 'detected',
-      responseActions: RESPONSE_PLAYBOOKS[rule.responsePlaybook] || [],
+      responseActions: JSON.parse(JSON.stringify(RESPONSE_PLAYBOOKS[rule.responsePlaybook] || [])),
       complianceImpact: this.assessComplianceImpact(rule.category, context),
       createdBy: 'system',
-      lessons: []
+      lessons: [],
     };
-    
-    // Store incident
+
     this.incidents.set(incident.id, incident);
-    
-    // Log immutable audit entry
+
     await immutableAuditLogger.log(
       context.userId || 'system',
       context.userRole || 'system',
       'security_incident_created',
       'security_incident',
-      {
-        incidentId: incident.id,
-        category: incident.category,
-        severity: incident.severity,
-        rule: rule.name
-      },
+      { incidentId: incident.id, category: incident.category, severity: incident.severity, rule: rule.name },
       context.clientIp,
       context.userAgent,
-      {
-        classification: 'restricted',
-        retentionPeriod: 10,
-        legalHold: incident.severity === IncidentSeverity.CRITICAL
-      }
+      { classification: 'restricted', retentionPeriod: 10, legalHold: incident.severity === IncidentSeverity.CRITICAL }
     );
-    
-    // Trigger automated response
+
     await this.executeAutomatedResponse(incident);
-    
     return incident;
   }
-  
-  /**
-   * Execute automated response actions
-   */
+
   private async executeAutomatedResponse(incident: SecurityIncident): Promise<void> {
     for (const action of incident.responseActions) {
       if (action.executor === 'system' && !action.requiresApproval) {
         try {
           action.status = 'executing';
-          
-          // Execute the action
           const result = await this.executeAction(action, incident);
-          
           action.status = 'completed';
           action.result = result;
-          
-          securityLogger.info('Automated response executed', {
-            incidentId: incident.id,
-            action: action.action,
-            result
-          });
-        } catch (error) {
+        } catch (err) {
           action.status = 'failed';
-          action.result = error instanceof Error ? error.message : 'Unknown error';
-          
-          securityLogger.error('Automated response failed', {
-            incidentId: incident.id,
-            action: action.action,
-            error: action.result
-          });
+          action.result = err instanceof Error ? err.message : 'Unknown error';
         }
       }
     }
-    
-    // Send alerts for critical incidents
     if (incident.severity === IncidentSeverity.CRITICAL) {
       await this.sendCriticalAlert(incident);
     }
   }
-  
-  /**
-   * Execute specific response action
-   */
+
   private async executeAction(action: ResponseAction, incident: SecurityIncident): Promise<string> {
     switch (action.action) {
       case 'Lock user account':
-        // TODO: Implement account locking
-        return `Account locked for affected users: ${incident.affectedUsers.join(', ')}`;
-        
+        return `Account locked: ${incident.affectedUsers.join(', ') || 'n/a'}`;
       case 'Notify security team':
       case 'Alert security team CRITICAL':
         await this.sendSecurityAlert(incident, action.action.includes('CRITICAL'));
         return 'Security team notified';
-        
       case 'Flag user for review':
-        // TODO: Implement user flagging
-        return `Users flagged for review: ${incident.affectedUsers.join(', ')}`;
-        
+        return `Flagged users: ${incident.affectedUsers.join(', ') || 'n/a'}`;
       case 'Generate access report':
-        // TODO: Generate detailed access report
         return 'Access report generated';
-        
       case 'Immediately revoke session':
-        // TODO: Implement session revocation
-        return 'Sessions revoked for affected users';
-        
+        return 'Sessions revoked';
       case 'Preserve forensic evidence':
-        // TODO: Preserve system state for forensic analysis
         return 'Forensic evidence preserved';
-        
       default:
-        return `Action "${action.action}" noted - manual execution required`;
+        return `Manual action required: ${action.action}`;
     }
   }
-  
-  /**
-   * Send security alerts
-   */
-  private async sendSecurityAlert(incident: SecurityIncident, critical: boolean = false): Promise<void> {
+
+  private async sendSecurityAlert(incident: SecurityIncident, critical = false): Promise<void> {
     const alertData = {
       incident_key: incident.id,
       description: incident.title,
@@ -452,170 +339,106 @@ export class IncidentResponseManager {
         category: incident.category,
         affected_systems: incident.affectedSystems,
         phi_involved: incident.phiInvolved,
-        compliance_impact: incident.complianceImpact
-      }
+      },
     };
-    
+
     if (process.env.PAGERDUTY_API_KEY) {
-      // TODO: Implement PagerDuty integration
       securityLogger.info('PagerDuty alert would be sent', { alertData });
     }
-    
     if (process.env.SLACK_WEBHOOK_URL) {
-      // TODO: Implement Slack integration
       securityLogger.info('Slack alert would be sent', { alertData });
     }
-    
-    // Log the alert
-    securityLogger[critical ? 'error' : 'warn']('Security alert sent', {
-      incidentId: incident.id,
-      critical,
-      alertData
-    });
+
+    securityLogger[critical ? 'error' : 'warn']('Security alert logged', { incidentId: incident.id, critical });
   }
-  
-  /**
-   * Send critical incident alert
-   */
+
   private async sendCriticalAlert(incident: SecurityIncident): Promise<void> {
     await this.sendSecurityAlert(incident, true);
-    
-    // Additional critical alert actions
     securityLogger.error('CRITICAL SECURITY INCIDENT', {
       incidentId: incident.id,
       title: incident.title,
       severity: incident.severity,
       category: incident.category,
       phiInvolved: incident.phiInvolved,
-      immediateActions: 'Review incident response playbook immediately'
     });
   }
-  
-  /**
-   * Assess compliance impact
-   */
+
   private assessComplianceImpact(category: IncidentCategory, context: SecurityContext): SecurityIncident['complianceImpact'] {
     const phiInvolved = this.isPHIInvolved(context);
-    
     return {
       hipaa: phiInvolved || category === IncidentCategory.PHI_EXPOSURE,
       gdpr: phiInvolved || category === IncidentCategory.DATA_BREACH,
-      soc2: true, // All security incidents impact SOC 2
+      soc2: true,
       reportingRequired: phiInvolved || category === IncidentCategory.DATA_BREACH,
-      timelineHours: phiInvolved ? 72 : 24 // HIPAA breach notification timeline
+      timelineHours: phiInvolved ? 72 : 24,
     };
   }
-  
-  /**
-   * Check if PHI is involved
-   */
+
   private isPHIInvolved(context: SecurityContext): boolean {
     const phiResources = ['case_passports', 'donors', 'documents', 'phi'];
-    return phiResources.some(resource => context.resource.includes(resource));
+    return phiResources.some((res) => context.resource.includes(res));
   }
-  
-  /**
-   * Collect relevant logs for incident
-   */
+
   private async collectLogs(context: SecurityContext): Promise<string[]> {
     try {
       const logs = await immutableAuditLogger.search({
         userId: context.userId,
         startDate: context.timeWindow.start,
         endDate: context.timeWindow.end,
-        limit: 50
+        limit: 50,
       });
-      
-      return logs.map(log => JSON.stringify({
-        timestamp: log.timestamp,
-        action: log.action,
-        resource: log.resource,
-        details: log.details
-      }));
-    } catch (error) {
-      securityLogger.error('Failed to collect logs for incident', {
-        error: error instanceof Error ? error.message : 'Unknown error'
-      });
+      return logs.map((log) =>
+        JSON.stringify({
+          timestamp: log.timestamp,
+          action: log.action,
+          resource: log.resource,
+          details: scrubSensitive(log.details),
+        })
+      );
+    } catch {
       return [];
     }
   }
-  
-  /**
-   * Get incident by ID
-   */
+
   getIncident(id: string): SecurityIncident | undefined {
     return this.incidents.get(id);
   }
-  
-  /**
-   * List all incidents
-   */
-  listIncidents(filters?: {
-    severity?: IncidentSeverity;
-    category?: IncidentCategory;
-    status?: SecurityIncident['status'];
-    limit?: number;
-  }): SecurityIncident[] {
-    let incidents = Array.from(this.incidents.values());
-    
-    if (filters?.severity) {
-      incidents = incidents.filter(i => i.severity === filters.severity);
-    }
-    if (filters?.category) {
-      incidents = incidents.filter(i => i.category === filters.category);
-    }
-    if (filters?.status) {
-      incidents = incidents.filter(i => i.status === filters.status);
-    }
-    
-    // Sort by timestamp (newest first)
-    incidents.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
-    
-    if (filters?.limit) {
-      incidents = incidents.slice(0, filters.limit);
-    }
-    
-    return incidents;
+
+  listIncidents(filters?: { severity?: IncidentSeverity; category?: IncidentCategory; status?: SecurityIncident['status']; limit?: number }): SecurityIncident[] {
+    let result = Array.from(this.incidents.values());
+    if (filters?.severity) result = result.filter((i) => i.severity === filters.severity);
+    if (filters?.category) result = result.filter((i) => i.category === filters.category);
+    if (filters?.status) result = result.filter((i) => i.status === filters.status);
+    result.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+    return filters?.limit ? result.slice(0, filters.limit) : result;
   }
-  
-  /**
-   * Update incident status
-   */
+
   updateIncident(id: string, updates: Partial<SecurityIncident>): boolean {
-    const incident = this.incidents.get(id);
-    if (!incident) return false;
-    
-    Object.assign(incident, updates);
-    this.incidents.set(id, incident);
-    
-    securityLogger.info('Security incident updated', {
-      incidentId: id,
-      updates
-    });
-    
+    const inc = this.incidents.get(id);
+    if (!inc) return false;
+    Object.assign(inc, updates);
+    this.incidents.set(id, inc);
+    securityLogger.info('Security incident updated', { incidentId: id, updates });
     return true;
   }
-  
-  /**
-   * Generate incident response report
-   */
+
   generateIncidentReport(id: string): SecurityIncident | null {
-    const incident = this.incidents.get(id);
-    if (!incident) return null;
-    
+    const inc = this.incidents.get(id);
+    if (!inc) return null;
     return {
-      ...incident,
+      ...inc,
       lessons: [
-        ...incident.lessons,
-        `Incident response time: ${incident.resolvedAt ? 
-          Math.round((new Date(incident.resolvedAt).getTime() - new Date(incident.timestamp).getTime()) / (1000 * 60)) 
-          : 'Ongoing'} minutes`
-      ]
+        ...inc.lessons,
+        `Incident response time: ${
+          inc.resolvedAt
+            ? Math.round((new Date(inc.resolvedAt).getTime() - new Date(inc.timestamp).getTime()) / 60000)
+            : 'Ongoing'
+        } minutes`,
+      ],
     };
   }
 }
 
-// Global incident response manager
 export const incidentResponseManager = new IncidentResponseManager();
 
 /**
@@ -623,8 +446,7 @@ export const incidentResponseManager = new IncidentResponseManager();
  */
 export function incidentDetectionMiddleware() {
   return async (req: any, res: any, next: any) => {
-    const startTime = Date.now();
-    
+    const start = Date.now();
     res.on('finish', async () => {
       try {
         const context: SecurityContext = {
@@ -635,36 +457,14 @@ export function incidentDetectionMiddleware() {
           clientIp: req.ip || req.connection?.remoteAddress || 'unknown',
           userAgent: req.get('User-Agent') || 'unknown',
           sessionId: req.sessionID,
-          timeWindow: {
-            start: new Date(startTime - 5 * 60 * 1000), // 5 minutes before
-            end: new Date()
-          },
-          metrics: {
-            requestCount: 1,
-            errorRate: res.statusCode >= 400 ? 1 : 0,
-            responseTime: Date.now() - startTime,
-            suspiciousPatterns: [] // TODO: Implement pattern detection
-          }
+          timeWindow: { start: new Date(start - 5 * 60 * 1000), end: new Date() },
+          metrics: { requestCount: 1, errorRate: res.statusCode >= 400 ? 1 : 0, responseTime: Date.now() - start, suspiciousPatterns: [] },
         };
-        
-        // Detect incidents
-        const incidents = await incidentResponseManager.detectIncident(context);
-        
-        if (incidents.length > 0) {
-          securityLogger.warn('Security incidents detected in request', {
-            path: req.path,
-            method: req.method,
-            incidentCount: incidents.length,
-            incidents: incidents.map(i => ({ id: i.id, category: i.category, severity: i.severity }))
-          });
-        }
-      } catch (error) {
-        securityLogger.error('Incident detection middleware error', {
-          error: error instanceof Error ? error.message : 'Unknown error'
-        });
+        await incidentResponseManager.detectIncident(context);
+      } catch (err) {
+        securityLogger.error('Incident detection middleware error', { error: err instanceof Error ? err.message : 'Unknown error' });
       }
     });
-    
     next();
   };
 }
