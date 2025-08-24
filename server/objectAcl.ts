@@ -66,18 +66,17 @@ abstract class BaseObjectAccessGroup implements ObjectAccessGroup {
 
 /**
  * Example group implementations
- * (replace with your own data sources!)
  */
 class UserListAccessGroup extends BaseObjectAccessGroup {
   async hasMember(userId: string): Promise<boolean> {
-    // TODO: Lookup DB entity by this.id → list of userIds
-    return userId === this.id; // demo only
+    // TODO: Replace with DB lookup
+    return userId === this.id;
   }
 }
 
 class EmailDomainAccessGroup extends BaseObjectAccessGroup {
   async hasMember(userId: string): Promise<boolean> {
-    // TODO: fetch user email from DB
+    // TODO: Replace with DB lookup
     const fakeEmail = `${userId}@example.com`;
     return fakeEmail.endsWith(`@${this.id}`);
   }
@@ -85,15 +84,15 @@ class EmailDomainAccessGroup extends BaseObjectAccessGroup {
 
 class GroupMemberAccessGroup extends BaseObjectAccessGroup {
   async hasMember(userId: string): Promise<boolean> {
-    // TODO: query DB group members
-    return userId.startsWith(this.id); // demo
+    // TODO: Replace with DB lookup
+    return userId.startsWith(this.id);
   }
 }
 
 class SubscriberAccessGroup extends BaseObjectAccessGroup {
   async hasMember(userId: string): Promise<boolean> {
-    // TODO: check if user is subscribed to entity this.id
-    return userId.includes(this.id); // demo
+    // TODO: Replace with DB lookup
+    return userId.includes(this.id);
   }
 }
 
