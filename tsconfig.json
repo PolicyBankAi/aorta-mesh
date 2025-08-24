@@ -9,29 +9,25 @@
   ],
   "compilerOptions": {
     "incremental": true,
-    "tsBuildInfoFile": "./node_modules/.cache/tsbuildinfo", 
+    "tsBuildInfoFile": "./node_modules/.cache/tsbuildinfo",
 
-    /* Language & Module */
     "module": "ESNext",
     "target": "ESNext",
     "moduleResolution": "bundler",
     "jsx": "preserve",
     "lib": ["ESNext", "DOM", "DOM.Iterable"],
 
-    /* Strictness & Interop */
     "strict": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
 
-    /* Output */
     "outDir": "./dist",
     "rootDir": ".",
     "declaration": true,
     "declarationMap": true,
     "sourceMap": true,
 
-    /* Paths / Aliases */
     "baseUrl": ".",
     "types": ["node", "vite/client"],
     "paths": {
@@ -39,12 +35,10 @@
       "@shared/*": ["./shared/*"]
     },
 
-    /* Plugins */
     "plugins": [
       { "transform": "typescript-transform-paths", "afterDeclarations": true }
     ],
 
-    /* JSON Imports */
     "resolveJsonModule": true,
     "isolatedModules": true
   }
