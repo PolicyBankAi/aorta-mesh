@@ -7,32 +7,32 @@ import { auditLogger, securityLogger } from "./security";
 const router = Router();
 
 /**
- * GET /api/consents?user_id=...
+ * GET /api/consents?userId=...
  * Retrieve all consent records for a user
  */
 router.get(
   "/",
   auditLogger("consents_fetch"),
   async (req: Request, res: Response) => {
-    const { user_id } = req.query;
+    const { userId } = req.query;
 
-    if (!user_id || typeof user_id !== "string") {
+    if (!userId || typeof userId !== "string") {
       return res
         .status(400)
-        .json({ error: "user_id query parameter required", code: "BAD_REQUEST" });
+        .json({ error: "userId query parameter required", code: "BAD_REQUEST" });
     }
 
     try {
       const result = await db
         .select()
         .from(consents)
-        .where(eq(consents.user_id, user_id));
+        .where(eq(consents.userId, userId));
 
       res.json({ success: true, data: result });
     } catch (err) {
       securityLogger.error("Error fetching consents", {
         error: err instanceof Error ? err.message : String(err),
-        user_id,
+        userId,
       });
       res.status(500).json({ error: "Failed to fetch consents", code: "SERVER_ERROR" });
     }
@@ -47,11 +47,11 @@ router.post(
   "/",
   auditLogger("consent_create"),
   async (req: Request, res: Response) => {
-    const { user_id, consent_type } = req.body;
+    const { userId, consentType } = req.body;
 
-    if (!user_id || !consent_type) {
+    if (!userId || !consentType) {
       return res.status(400).json({
-        error: "user_id and consent_type required",
+        error: "userId and consentType required",
         code: "BAD_REQUEST",
       });
     }
@@ -60,8 +60,8 @@ router.post(
       const [result] = await db
         .insert(consents)
         .values({
-          user_id: String(user_id),
-          consent_type: String(consent_type),
+          userId: String(userId),
+          consentType: String(consentType),
         })
         .returning();
 
@@ -69,8 +69,8 @@ router.post(
     } catch (err) {
       securityLogger.error("Error recording consent", {
         error: err instanceof Error ? err.message : String(err),
-        user_id,
-        consent_type,
+        userId,
+        consentType,
       });
       res.status(500).json({ error: "Failed to record consent", code: "SERVER_ERROR" });
     }
