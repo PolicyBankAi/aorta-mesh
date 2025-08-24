@@ -7,18 +7,19 @@ export interface AuthUser {
 }
 
 export function useAuth() {
-  // Example: adjust this to match your real auth system
   const [isLoading, setIsLoading] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [user, setUser] = useState<AuthUser | null>(null);
 
   useEffect(() => {
-    // Simulate auth fetch
-    setTimeout(() => {
-      setUser({ id: "123", email: "test@example.com", role: "admin" }); // replace with real auth
+    // 🔐 Simulated async auth check (replace with real API or SDK call)
+    const timer = setTimeout(() => {
+      setUser({ id: "123", email: "test@example.com", role: "admin" }); // Replace with actual user data
       setIsAuthenticated(true);
       setIsLoading(false);
     }, 500);
+
+    return () => clearTimeout(timer);
   }, []);
 
   return { isLoading, isAuthenticated, user };
