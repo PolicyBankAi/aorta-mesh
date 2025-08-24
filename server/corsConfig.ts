@@ -1,55 +1,68 @@
-import cors from 'cors';
+import cors, { CorsOptions } from "cors";
+import { securityLogger } from "./security";
 
-// Enhanced CORS configuration for production security
-export const corsOptions = {
+/**
+ * Enhanced CORS configuration for production
+ */
+export const corsOptions: CorsOptions = {
   origin: function (
     origin: string | undefined,
-    callback: (err: Error | null, origin?: boolean) => void
+    callback: (err: Error | null, allow?: boolean) => void
   ) {
-    // Allow requests with no origin (like mobile apps, Postman, etc.)
-    if (!origin) return callback(null, true);
+    // Allow requests with no origin (mobile apps, Postman, curl)
+    if (!origin) {
+      securityLogger.debug("CORS check skipped (no origin header)");
+      return callback(null, true);
+    }
 
-    // Define allowed origins based on environment
+    // Prefer environment-based allowlist for flexibility
+    const envAllowed = process.env.ALLOWED_ORIGINS
+      ? process.env.ALLOWED_ORIGINS.split(",").map((o) => o.trim())
+      : [];
+
     const allowedOrigins =
-      process.env.NODE_ENV === 'production'
+      process.env.NODE_ENV === "production"
         ? [
-            'https://aortatrace.org',
-            'https://www.aortatrace.org',
-            // Add any other production domains
+            "https://aortatrace.org",
+            "https://www.aortatrace.org",
+            ...envAllowed, // support env-based injection
           ]
         : [
-            'http://localhost:5000',
-            'http://127.0.0.1:5000',
+            "http://localhost:5000",
+            "http://127.0.0.1:5000",
             /^https:\/\/.*\.replit\.dev$/,
             /^https:\/\/.*\.repl\.co$/,
-            // Development patterns
+            ...envAllowed,
           ];
 
-    const isAllowed = allowedOrigins.some((allowedOrigin) => {
-      if (typeof allowedOrigin === 'string') {
-        return origin === allowedOrigin;
-      } else {
-        return allowedOrigin.test(origin);
-      }
-    });
+    const isAllowed = allowedOrigins.some((allowed) =>
+      typeof allowed === "string" ? origin === allowed : allowed.test(origin)
+    );
 
     if (isAllowed) {
+      securityLogger.debug("CORS allowed", { origin });
       callback(null, true);
     } else {
-      callback(new Error('Not allowed by CORS'), false);
+      securityLogger.warn("CORS blocked", { origin });
+      callback(new Error(`CORS: Origin ${origin} not allowed`), false);
     }
   },
+
   credentials: true,
   optionsSuccessStatus: 200,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+
+  // Security hardening
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
   allowedHeaders: [
-    'Origin',
-    'X-Requested-With',
-    'Content-Type',
-    'Accept',
-    'Authorization',
-    'X-CSRF-Token',
+    "Origin",
+    "X-Requested-With",
+    "Content-Type",
+    "Accept",
+    "Authorization",
+    "X-CSRF-Token",
   ],
+  exposedHeaders: ["Content-Disposition"], // allow file downloads
+  maxAge: 600, // cache preflight results for 10 min
 };
 
 export default cors(corsOptions);
