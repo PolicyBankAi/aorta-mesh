@@ -37,7 +37,7 @@ export const objectStorageClient = new Storage({
     },
     universe_domain: "googleapis.com",
   },
-  projectId: "",
+  projectId: process.env.GCP_PROJECT_ID || "",
 });
 
 export class ObjectStorageService {
@@ -49,7 +49,9 @@ export class ObjectStorageService {
       .filter(Boolean);
 
     if (paths.length === 0) {
-      throw new Error("Missing PUBLIC_OBJECT_SEARCH_PATHS env var.");
+      throw new Error(
+        "PUBLIC_OBJECT_SEARCH_PATHS not set. Configure at least one bucket path."
+      );
     }
 
     return [...new Set(paths)];
@@ -58,7 +60,7 @@ export class ObjectStorageService {
   getPrivateObjectDir(): string {
     const dir = process.env.PRIVATE_OBJECT_DIR;
     if (!dir) {
-      throw new Error("Missing PRIVATE_OBJECT_DIR env var.");
+      throw new Error("PRIVATE_OBJECT_DIR not set.");
     }
     return dir;
   }
@@ -68,8 +70,13 @@ export class ObjectStorageService {
       const fullPath = `${searchPath}/${filePath}`;
       const { bucketName, objectName } = parseObjectPath(fullPath);
       const file = objectStorageClient.bucket(bucketName).file(objectName);
-      const [exists] = await file.exists();
-      if (exists) return file;
+
+      try {
+        const [exists] = await file.exists();
+        if (exists) return file;
+      } catch (err) {
+        console.error("Error checking public object existence:", err);
+      }
     }
     return null;
   }
@@ -83,53 +90,93 @@ export class ObjectStorageService {
     const fullPath = `${this.getPrivateObjectDir()}/uploads/${entityId}`;
     const { bucketName, objectName } = parseObjectPath(fullPath);
     const file = objectStorageClient.bucket(bucketName).file(objectName);
+
     const [exists] = await file.exists();
     if (!exists) throw new ObjectNotFoundError();
+
     return file;
   }
 
-  async downloadObject(file: File, res: Response, cacheTtlSec = 3600): Promise<void> {
-    const [metadata] = await file.getMetadata();
+  async downloadObject(
+    file: File,
+    res: Response,
+    cacheTtlSec = 3600
+  ): Promise<void> {
+    try {
+      const [metadata] = await file.getMetadata();
 
-    res.set({
-      "Content-Type": metadata.contentType || "application/octet-stream",
-      "Content-Length": metadata.size,
-      "Cache-Control": `private, max-age=${cacheTtlSec}`,
-    });
+      res.set({
+        "Content-Type": metadata.contentType || "application/octet-stream",
+        "Content-Length": metadata.size,
+        "Cache-Control": `private, max-age=${cacheTtlSec}`,
+      });
 
-    file.createReadStream()
-      .on("error", (err) => {
+      const stream = file.createReadStream();
+
+      // Handle early disconnect
+      res.on("close", () => stream.destroy());
+
+      stream.on("error", (err) => {
         console.error("Download stream error:", err);
-        if (!res.headersSent) res.status(500).json({ error: "Error streaming file" });
-      })
-      .pipe(res);
+        if (!res.headersSent) {
+          res.status(500).json({ error: "Error streaming file" });
+        }
+      });
+
+      stream.pipe(res);
+    } catch (err) {
+      console.error("Error downloading object:", err);
+      if (!res.headersSent) {
+        res.status(500).json({ error: "Error downloading file" });
+      }
+    }
   }
 
   async getObjectEntityUploadURL(): Promise<string> {
     const objectId = randomUUID();
     const fullPath = `${this.getPrivateObjectDir()}/uploads/${objectId}`;
     const { bucketName, objectName } = parseObjectPath(fullPath);
-    return signObjectURL({ bucketName, objectName, method: "PUT", ttlSec: 900 });
+
+    return signObjectURL({
+      bucketName,
+      objectName,
+      method: "PUT",
+      ttlSec: 900,
+    });
   }
 
   normalizeObjectEntityPath(rawPath: string): string {
     if (!rawPath.startsWith("https://storage.googleapis.com/")) return rawPath;
+
     const url = new URL(rawPath);
     const rawObjectPath = url.pathname;
     const base = this.getPrivateObjectDir();
+
     if (!rawObjectPath.startsWith(base)) return rawObjectPath;
+
     const entityId = rawObjectPath.slice(base.length).replace(/^\/+/, "");
     return `/objects/${entityId}`;
   }
 
-  async canAccessObjectEntity({ userId }: { userId?: string; objectFile: File }): Promise<boolean> {
-    return !!userId; // Simplified: restrict access to authenticated users
+  async canAccessObjectEntity({
+    userId,
+  }: {
+    userId?: string;
+    objectFile: File;
+  }): Promise<boolean> {
+    // Simple rule: require authentication
+    return !!userId;
   }
 }
 
-function parseObjectPath(path: string): { bucketName: string; objectName: string } {
+function parseObjectPath(path: string): {
+  bucketName: string;
+  objectName: string;
+} {
   const parts = path.replace(/^\//, "").split("/");
-  if (parts.length < 2) throw new Error("Invalid object path");
+  if (parts.length < 2) {
+    throw new Error(`Invalid object path: ${path}`);
+  }
   return {
     bucketName: parts[0],
     objectName: parts.slice(1).join("/"),
@@ -147,19 +194,24 @@ async function signObjectURL({
   method: "GET" | "PUT" | "DELETE" | "HEAD";
   ttlSec: number;
 }): Promise<string> {
-  const response = await fetch(`${REPLIT_SIDECAR_ENDPOINT}/object-storage/signed-object-url`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      bucket_name: bucketName,
-      object_name: objectName,
-      method,
-      expires_at: new Date(Date.now() + ttlSec * 1000).toISOString(),
-    }),
-  });
+  const response = await fetch(
+    `${REPLIT_SIDECAR_ENDPOINT}/object-storage/signed-object-url`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        bucket_name: bucketName,
+        object_name: objectName,
+        method,
+        expires_at: new Date(Date.now() + ttlSec * 1000).toISOString(),
+      }),
+    }
+  );
 
   if (!response.ok) {
-    throw new Error(`Failed to sign object URL: ${response.status}`);
+    throw new Error(
+      `Failed to sign object URL (${response.status}): ${response.statusText}`
+    );
   }
 
   const { signed_url } = await response.json();
