@@ -1,36 +1,50 @@
-import * as React from "react"
-import { cva, type VariantProps } from "class-variance-authority"
+import * as React from "react";
+import { cva, type VariantProps } from "class-variance-authority";
+import { cn } from "@/lib/utils";
 
-import { cn } from "@/lib/utils"
+/**
+ * Badge Component (AORTA Mesh hardened)
+ * -------------------------------------
+ * - Cyan/black design system
+ * - Accessible: role="status"
+ * - Variants for workflow states
+ */
 
 const badgeVariants = cva(
-  "inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
+  "inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:ring-offset-2",
   {
     variants: {
       variant: {
-        default:
-          "border-transparent bg-primary text-primary-foreground hover:bg-primary/80",
-        secondary:
-          "border-transparent bg-secondary text-secondary-foreground hover:bg-secondary/80",
-        destructive:
-          "border-transparent bg-destructive text-destructive-foreground hover:bg-destructive/80",
-        outline: "text-foreground",
+        default: "border border-cyan-400 bg-cyan-600 text-black hover:bg-cyan-700",
+        success: "border border-green-500 bg-green-600 text-white hover:bg-green-700",
+        warning: "border border-yellow-500 bg-yellow-600 text-black hover:bg-yellow-700",
+        destructive: "border border-red-500 bg-red-600 text-white hover:bg-red-700",
+        info: "border border-blue-500 bg-blue-600 text-white hover:bg-blue-700",
+        outline: "border border-cyan-400 text-cyan-300 bg-transparent hover:bg-gray-900",
       },
     },
     defaultVariants: {
       variant: "default",
     },
   }
-)
+);
 
 export interface BadgeProps
   extends React.HTMLAttributes<HTMLDivElement>,
-    VariantProps<typeof badgeVariants> {}
-
-function Badge({ className, variant, ...props }: BadgeProps) {
-  return (
-    <div className={cn(badgeVariants({ variant }), className)} {...props} />
-  )
+    VariantProps<typeof badgeVariants> {
+  "data-testid"?: string;
 }
 
-export { Badge, badgeVariants }
+function Badge({ className, variant, "data-testid": testId = "badge", ...props }: BadgeProps) {
+  return (
+    <div
+      role="status"
+      aria-label={`badge-${variant || "default"}`}
+      data-testid={testId}
+      className={cn(badgeVariants({ variant }), className)}
+      {...props}
+    />
+  );
+}
+
+export { Badge, badgeVariants };
