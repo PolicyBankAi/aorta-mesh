@@ -13,7 +13,6 @@ export default function Dashboard() {
   const { toast } = useToast();
   const { isAuthenticated, isLoading } = useAuth();
 
-  // Redirect to login if not authenticated
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
       toast({
@@ -22,13 +21,11 @@ export default function Dashboard() {
         variant: "destructive",
       });
       setTimeout(async () => {
-        // Auto login with demo account
-        const response = await fetch('/api/demo/login', { method: 'POST' });
+        const response = await fetch("/api/demo/login", { method: "POST" });
         if (response.ok) {
           window.location.reload();
         }
       }, 500);
-      return;
     }
   }, [isAuthenticated, isLoading, toast]);
 
@@ -43,30 +40,23 @@ export default function Dashboard() {
   return (
     <div className="flex h-screen overflow-hidden bg-black">
       <Sidebar />
-      
       <div className="flex flex-col w-0 flex-1 overflow-hidden">
         <Header />
-        
         <main className="flex-1 relative overflow-y-auto focus:outline-none bg-black">
           <div className="p-6">
-            {/* Top Statistics Row */}
+            {/* Top Stats */}
             <div className="grid grid-cols-3 gap-6 mb-8">
               <StatsCards />
             </div>
-            
-            {/* Main Content Grid - 3 Columns */}
+
+            {/* Main Grid */}
             <div className="grid grid-cols-12 gap-6 h-full">
-              {/* Left Column - Recent Activity */}
               <div className="col-span-4">
                 <RecentActivity />
               </div>
-              
-              {/* Middle Column - QA Workbench */}
               <div className="col-span-4">
                 <QaAlerts />
               </div>
-              
-              {/* Right Column - Case Passport Preview */}
               <div className="col-span-4">
                 <CasePassportPreview />
               </div>
