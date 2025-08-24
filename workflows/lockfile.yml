@@ -1,0 +1,52 @@
+name: 🔒 Lockfile Check & Auto-Fix
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  lockfile:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 📥 Checkout repo
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # needed to push to PR branches
+
+      - name: ⚡ Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: 🔎 Check lockfile consistency
+        id: check
+        run: |
+          set +e
+          pnpm install --frozen-lockfile
+          echo "exit_code=$?" >> $GITHUB_OUTPUT
+          set -e
+
+      - name: 🔄 Auto-fix lockfile if needed
+        if: steps.check.outputs.exit_code != '0'
+        run: |
+          echo "Lockfile mismatch detected. Regenerating..."
+          rm -f pnpm-lock.yaml
+          pnpm install --no-frozen-lockfile
+
+      - name: 💾 Commit updated lockfile to PR branch
+        if: steps.check.outputs.exit_code != '0' && github.event_name == 'pull_request'
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "chore: auto-regenerate pnpm lockfile [ci skip]"
+          file_pattern: pnpm-lock.yaml
+          branch: ${{ github.head_ref }}
+
+      - name: 💾 Commit updated lockfile to main
+        if: steps.check.outputs.exit_code != '0' && github.event_name != 'pull_request'
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "chore: auto-regenerate pnpm lockfile [ci skip]"
+          file_pattern: pnpm-lock.yaml
