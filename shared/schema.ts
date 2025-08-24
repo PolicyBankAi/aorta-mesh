@@ -1,3 +1,16 @@
+import {
+  pgTable,
+  uuid,
+  varchar,
+  text,
+  jsonb,
+  timestamp,
+  boolean,
+  integer,
+  numeric,
+  index
+} from "drizzle-orm/pg-core";
+
 /**
  * PHI Access Logs - HIPAA compliance
  */
