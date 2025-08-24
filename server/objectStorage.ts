@@ -2,7 +2,7 @@ import { Storage, File } from "@google-cloud/storage";
 import { Response } from "express";
 import { randomUUID } from "crypto";
 
-// Simple ACL types for medical documents
+// Basic permissions for medical documents
 export enum ObjectPermission {
   READ = "read",
   WRITE = "write",
@@ -15,7 +15,7 @@ export interface ObjectAclPolicy {
 
 const REPLIT_SIDECAR_ENDPOINT = "http://127.0.0.1:1106";
 
-// The object storage client is used to interact with the object storage service.
+// Object storage client
 export const objectStorageClient = new Storage({
   credentials: {
     audience: "replit",
@@ -31,7 +31,7 @@ export const objectStorageClient = new Storage({
     },
     universe_domain: "googleapis.com",
   },
-  projectId: "",
+  projectId: process.env.GCP_PROJECT_ID || "",
 });
 
 export class ObjectNotFoundError extends Error {
@@ -42,70 +42,65 @@ export class ObjectNotFoundError extends Error {
   }
 }
 
-// The object storage service is used to interact with the object storage service.
 export class ObjectStorageService {
   constructor() {}
 
-  // Gets the public object search paths.
-  getPublicObjectSearchPaths(): Array<string> {
+  /** Get list of configured public object search paths */
+  getPublicObjectSearchPaths(): string[] {
     const pathsStr = process.env.PUBLIC_OBJECT_SEARCH_PATHS || "";
     const paths = Array.from(
       new Set(
         pathsStr
           .split(",")
-          .map((path) => path.trim())
-          .filter((path) => path.length > 0)
+          .map((p) => p.trim())
+          .filter((p) => p.length > 0)
       )
     );
+
     if (paths.length === 0) {
       throw new Error(
-        "PUBLIC_OBJECT_SEARCH_PATHS not set. Create a bucket in 'Object Storage' " +
-          "tool and set PUBLIC_OBJECT_SEARCH_PATHS env var (comma-separated paths)."
+        "PUBLIC_OBJECT_SEARCH_PATHS not set. " +
+          "Create a bucket in Object Storage and set PUBLIC_OBJECT_SEARCH_PATHS env var (comma-separated paths)."
       );
     }
     return paths;
   }
 
-  // Gets the private object directory.
+  /** Get private object directory */
   getPrivateObjectDir(): string {
     const dir = process.env.PRIVATE_OBJECT_DIR || "";
     if (!dir) {
       throw new Error(
-        "PRIVATE_OBJECT_DIR not set. Create a bucket in 'Object Storage' " +
-          "tool and set PRIVATE_OBJECT_DIR env var."
+        "PRIVATE_OBJECT_DIR not set. " +
+          "Create a bucket in Object Storage and set PRIVATE_OBJECT_DIR env var."
       );
     }
     return dir;
   }
 
-  // Search for a public object from the search paths.
+  /** Search for a public object in configured paths */
   async searchPublicObject(filePath: string): Promise<File | null> {
     for (const searchPath of this.getPublicObjectSearchPaths()) {
       const fullPath = `${searchPath}/${filePath}`;
-
-      // Full path format: /<bucket_name>/<object_name>
       const { bucketName, objectName } = parseObjectPath(fullPath);
+
       const bucket = objectStorageClient.bucket(bucketName);
       const file = bucket.file(objectName);
 
-      // Check if file exists
       const [exists] = await file.exists();
       if (exists) {
         return file;
       }
     }
-
     return null;
   }
 
-  // Downloads an object to the response.
-  async downloadObject(file: File, res: Response, cacheTtlSec: number = 3600) {
+  /** Stream object to HTTP response */
+  async downloadObject(file: File, res: Response, cacheTtlSec = 3600) {
     try {
-      // Get file metadata
       const [metadata] = await file.getMetadata();
-      // For now, treat all medical documents as private
-      const isPublic = false;
-      // Set appropriate headers
+      const isPublic = false; // Medical docs → private by default
+
       res.set({
         "Content-Type": metadata.contentType || "application/octet-stream",
         "Content-Length": metadata.size,
@@ -114,9 +109,7 @@ export class ObjectStorageService {
         }, max-age=${cacheTtlSec}`,
       });
 
-      // Stream the file to the response
       const stream = file.createReadStream();
-
       stream.on("error", (err) => {
         console.error("Stream error:", err);
         if (!res.headersSent) {
@@ -125,30 +118,22 @@ export class ObjectStorageService {
       });
 
       stream.pipe(res);
-    } catch (error) {
-      console.error("Error downloading file:", error);
+    } catch (err) {
+      console.error("Error downloading file:", err);
       if (!res.headersSent) {
         res.status(500).json({ error: "Error downloading file" });
       }
     }
   }
 
-  // Gets the upload URL for an object entity.
+  /** Generate signed upload URL for new object */
   async getObjectEntityUploadURL(): Promise<string> {
-    const privateObjectDir = this.getPrivateObjectDir();
-    if (!privateObjectDir) {
-      throw new Error(
-        "PRIVATE_OBJECT_DIR not set. Create a bucket in 'Object Storage' " +
-          "tool and set PRIVATE_OBJECT_DIR env var."
-      );
-    }
-
+    const privateDir = this.getPrivateObjectDir();
     const objectId = randomUUID();
-    const fullPath = `${privateObjectDir}/uploads/${objectId}`;
+    const fullPath = `${privateDir}/uploads/${objectId}`;
 
     const { bucketName, objectName } = parseObjectPath(fullPath);
 
-    // Sign URL for PUT method with TTL
     return signObjectURL({
       bucketName,
       objectName,
@@ -157,7 +142,7 @@ export class ObjectStorageService {
     });
   }
 
-  // Gets the object entity file from the object path.
+  /** Get object reference from logical object path */
   async getObjectEntityFile(objectPath: string): Promise<File> {
     if (!objectPath.startsWith("/objects/")) {
       throw new ObjectNotFoundError();
@@ -169,12 +154,12 @@ export class ObjectStorageService {
     }
 
     const entityId = parts.slice(1).join("/");
-    let entityDir = this.getPrivateObjectDir();
-    if (!entityDir.endsWith("/")) {
-      entityDir = `${entityDir}/`;
-    }
-    const objectEntityPath = `${entityDir}${entityId}`;
+    let dir = this.getPrivateObjectDir();
+    if (!dir.endsWith("/")) dir = `${dir}/`;
+
+    const objectEntityPath = `${dir}${entityId}`;
     const { bucketName, objectName } = parseObjectPath(objectEntityPath);
+
     const bucket = objectStorageClient.bucket(bucketName);
     const objectFile = bucket.file(objectName);
     const [exists] = await objectFile.exists();
@@ -184,64 +169,55 @@ export class ObjectStorageService {
     return objectFile;
   }
 
+  /** Normalize raw GCS URL → internal object path */
   normalizeObjectEntityPath(rawPath: string): string {
     if (!rawPath.startsWith("https://storage.googleapis.com/")) {
       return rawPath;
     }
-  
-    // Extract the path from the URL by removing query parameters and domain
+
     const url = new URL(rawPath);
     const rawObjectPath = url.pathname;
-  
-    let objectEntityDir = this.getPrivateObjectDir();
-    if (!objectEntityDir.endsWith("/")) {
-      objectEntityDir = `${objectEntityDir}/`;
-    }
-  
-    if (!rawObjectPath.startsWith(objectEntityDir)) {
+
+    let privateDir = this.getPrivateObjectDir();
+    if (!privateDir.endsWith("/")) privateDir = `${privateDir}/`;
+
+    if (!rawObjectPath.startsWith(privateDir)) {
       return rawObjectPath;
     }
-  
-    // Extract the entity ID from the path
-    const entityId = rawObjectPath.slice(objectEntityDir.length);
+
+    const entityId = rawObjectPath.slice(privateDir.length);
     return `/objects/${entityId}`;
   }
 
-  // Simplified access control - in a full implementation, this would check ACL policies
+  /** Access control (placeholder: enforce auth required) */
   async canAccessObjectEntity({
     userId,
-    objectFile,
   }: {
     userId?: string;
     objectFile: File;
     requestedPermission?: ObjectPermission;
   }): Promise<boolean> {
-    // For medical documents, require authentication
-    return !!userId;
+    return !!userId; // Require auth for all private medical docs
   }
 }
 
-function parseObjectPath(path: string): {
-  bucketName: string;
-  objectName: string;
-} {
+/** Parse /bucketName/objectName into components */
+function parseObjectPath(path: string): { bucketName: string; objectName: string } {
   if (!path.startsWith("/")) {
     path = `/${path}`;
   }
-  const pathParts = path.split("/");
-  if (pathParts.length < 3) {
-    throw new Error("Invalid path: must contain at least a bucket name");
+  const parts = path.split("/");
+  if (parts.length < 3) {
+    throw new Error("Invalid object path (must include bucket and object name)");
   }
 
-  const bucketName = pathParts[1];
-  const objectName = pathParts.slice(2).join("/");
+  const bucketName = parts[1];
+  const objectName = parts.slice(2).join("/");
 
-  return {
-    bucketName,
-    objectName,
-  };
+  return { bucketName, objectName };
 }
 
+/** Request signed URL from Replit sidecar */
 async function signObjectURL({
   bucketName,
   objectName,
@@ -259,20 +235,20 @@ async function signObjectURL({
     method,
     expires_at: new Date(Date.now() + ttlSec * 1000).toISOString(),
   };
+
   const response = await fetch(
     `${REPLIT_SIDECAR_ENDPOINT}/object-storage/signed-object-url`,
     {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(request),
     }
   );
+
   if (!response.ok) {
     throw new Error(
-      `Failed to sign object URL, errorcode: ${response.status}, ` +
-        `make sure you're running on Replit`
+      `Failed to sign object URL [${response.status}]: ` +
+        `make sure you're running inside Replit`
     );
   }
 
