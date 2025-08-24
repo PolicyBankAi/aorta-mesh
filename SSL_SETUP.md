@@ -1,131 +1,169 @@
-# SSL/TLS Configuration for AORTA Mesh™
+# 🔐 SSL/TLS Configuration for AORTA Mesh™
 
-## Overview
+## 🌍 Overview
+**AORTA Mesh™** includes **automatic Let's Encrypt SSL certificate management** for production deployments, delivering enterprise-grade encryption with minimal configuration.
 
-AORTA Mesh™ includes automatic Let's Encrypt SSL certificate management for production deployments, providing enterprise-grade security with minimal configuration.
+---
 
-## Environment Variables
+## ⚙️ Environment Variables
 
-To enable SSL/TLS, configure the following environment variables:
-
-### Required for SSL
+### ✅ Required for SSL
 ```bash
 NODE_ENV=production
 ENABLE_SSL=true
 SSL_EMAIL=admin@aortatrace.org
 REPLIT_DOMAINS=aortatrace.org,www.aortatrace.org
-```
+⚙️ Optional
+bash
+Copy
+Edit
+SSL_STAGING=false   # Set to 'true' for Let's Encrypt staging (safe testing)
+🔧 How It Works
+🔑 Production SSL (Let's Encrypt)
+Automated certificate issuance and renewal
 
-### Optional SSL Configuration
-```bash
-SSL_STAGING=false  # Set to 'true' for Let's Encrypt staging (testing)
-```
+Domain validation via ACME HTTP-01 challenge
 
-## How It Works
+Certificates stored in ssl/greenlock.d/
 
-### Production SSL (Let's Encrypt)
-- Automatically obtains and renews SSL certificates
-- Uses ACME HTTP-01 challenge for domain validation
-- Certificates stored in `ssl/greenlock.d/` directory
-- Supports multiple domains/subdomains
-- Automatic renewal every 90 days
+Multi-domain / subdomain support
 
-### Development Mode
-- Generates self-signed certificates if OpenSSL available
-- Falls back to HTTP if SSL setup fails
-- No manual certificate management required
+Auto-renew every 90 days
 
-## SSL Certificate Process
+🛠 Development Mode
+Self-signed certificates auto-generated (if OpenSSL available)
 
-1. **Automatic Setup**: When `ENABLE_SSL=true` and `NODE_ENV=production`
-2. **Domain Validation**: Let's Encrypt validates domain ownership via HTTP-01 challenge
-3. **Certificate Installation**: Certificates automatically installed and configured
-4. **HTTPS Redirect**: HTTP traffic automatically redirected to HTTPS
-5. **Auto-Renewal**: Certificates renewed automatically before expiration
+Falls back to HTTP if SSL setup fails
 
-## Security Features
+No manual cert management required
 
-- **HSTS**: HTTP Strict Transport Security enabled
-- **Perfect Forward Secrecy**: Modern cipher suites only
-- **TLS 1.2+**: Older protocols disabled
-- **Certificate Transparency**: All certificates logged to CT logs
+📜 Certificate Lifecycle
+Setup → Triggered when ENABLE_SSL=true & NODE_ENV=production
 
-## Deployment Checklist
+Validation → Let's Encrypt validates via HTTP-01 challenge
 
-### Before Enabling SSL
-- [ ] Domain DNS pointed to deployment server
-- [ ] Firewall allows HTTP (80) and HTTPS (443) traffic
-- [ ] Valid email address for Let's Encrypt notifications
-- [ ] Backup strategy for SSL certificates
+Installation → Certificates written and configured automatically
 
-### Environment Configuration
-- [ ] `NODE_ENV=production`
-- [ ] `ENABLE_SSL=true`
-- [ ] `SSL_EMAIL` set to admin email
-- [ ] `REPLIT_DOMAINS` includes all domains/subdomains
+Enforcement → All HTTP redirected to HTTPS
 
-### Testing
-- [ ] Test with `SSL_STAGING=true` first
-- [ ] Verify certificate installation
-- [ ] Check HTTPS redirect works
-- [ ] Validate all domains in certificate
+Renewal → Auto-renewal before expiry (90-day cycle)
 
-## Troubleshooting
+🛡 Security Features
+HSTS → Strict Transport Security enabled
 
-### Common Issues
+Perfect Forward Secrecy → Modern cipher suites only
 
-**SSL Setup Failed**
-- Check domain DNS configuration
-- Verify firewall allows port 80/443
-- Ensure email address is valid
-- Check Let's Encrypt rate limits
+TLS 1.2+ enforced → Older protocols disabled
 
-**Certificate Not Renewing**
-- Check disk space in `ssl/greenlock.d/`
-- Verify domain still points to server
-- Check Let's Encrypt logs
+Certificate Transparency → Logged in public CT logs
 
-**Development Issues**
-- SSL disabled in development by default
-- Self-signed certificates auto-generated if needed
-- Falls back to HTTP if certificate generation fails
+✅ Deployment Checklist
+🔎 Pre-SSL
+ DNS records point to production server
 
-### Logs
-SSL setup logs include:
-- Certificate acquisition status
-- Renewal attempts
-- Error messages with troubleshooting hints
+ Firewall allows ports 80 (HTTP) & 443 (HTTPS)
 
-## Security Best Practices
+ Valid admin email configured
 
-1. **Use Strong Domains**: Avoid easily guessable subdomains
-2. **Monitor Certificates**: Set up alerts for expiration
-3. **Regular Updates**: Keep SSL dependencies updated
-4. **Backup Certificates**: Include SSL certificates in backups
-5. **Test Renewals**: Periodically test automatic renewal
+ Backup plan for SSL certs in place
 
-## Production Deployment
+⚙️ Environment Setup
+ NODE_ENV=production
 
-For `aortatrace.org` deployment:
+ ENABLE_SSL=true
 
-```bash
-# Environment Variables
+ SSL_EMAIL configured
+
+ REPLIT_DOMAINS includes all required domains/subdomains
+
+🧪 Testing
+ Test with SSL_STAGING=true before production
+
+ Verify cert issuance success
+
+ Confirm HTTP → HTTPS redirect
+
+ Ensure all subdomains included in cert
+
+🚨 Troubleshooting
+Common Issues
+❌ SSL Setup Failed
+
+Check DNS propagation
+
+Verify firewall ports 80/443
+
+Confirm SSL_EMAIL is valid
+
+Review Let's Encrypt rate limits
+
+❌ Certificate Not Renewing
+
+Check available disk space (ssl/greenlock.d/)
+
+Confirm DNS points to server
+
+Review Let's Encrypt renewal logs
+
+⚙️ Development Mode
+
+SSL disabled by default
+
+Self-signed certs auto-generated if OpenSSL available
+
+Falls back to HTTP if cert fails
+
+🔎 Logs
+SSL setup logs capture:
+
+Certificate acquisition status
+
+Renewal attempts
+
+Error messages w/ troubleshooting guidance
+
+🔐 Security Best Practices
+Use strong domain naming conventions
+
+Monitor certificate expiry (alerts recommended)
+
+Keep SSL-related dependencies updated
+
+Include certs in your backup strategy
+
+Test renewal flow periodically
+
+🚀 Production Deployment (aortatrace.org)
+bash
+Copy
+Edit
 NODE_ENV=production
 ENABLE_SSL=true
 SSL_EMAIL=admin@aortatrace.org
 REPLIT_DOMAINS=aortatrace.org,www.aortatrace.org
-```
+When deployed, the system will automatically:
 
-The system will automatically:
-1. Obtain SSL certificates for both domains
-2. Configure HTTPS with security headers
-3. Redirect HTTP to HTTPS
-4. Set up automatic renewal
+Issue SSL certs for aortatrace.org + www.aortatrace.org
 
-## Support
+Enforce HTTPS w/ secure headers
 
+Redirect HTTP → HTTPS
+
+Manage auto-renewal seamlessly
+
+📞 Support
 For SSL-related issues:
-- Check application logs for SSL setup messages
-- Verify domain configuration
-- Contact support with specific error messages
-- Include SSL staging test results
+
+Inspect application logs for SSL setup output
+
+Verify domain DNS configuration
+
+Re-test with SSL_STAGING=true
+
+Contact support with:
+
+Error logs
+
+Domain info
+
+Staging test results
