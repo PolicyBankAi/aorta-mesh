@@ -15,6 +15,7 @@ const InputOTP = React.forwardRef<
       containerClassName
     )}
     className={cn("disabled:cursor-not-allowed", className)}
+    aria-label="One-Time Password Input"
     {...props}
   />
 ))
@@ -24,14 +25,20 @@ const InputOTPGroup = React.forwardRef<
   React.ElementRef<"div">,
   React.ComponentPropsWithoutRef<"div">
 >(({ className, ...props }, ref) => (
-  <div ref={ref} className={cn("flex items-center", className)} {...props} />
+  <div
+    ref={ref}
+    className={cn("flex items-center", className)}
+    role="group"
+    aria-label="OTP Digit Group"
+    {...props}
+  />
 ))
 InputOTPGroup.displayName = "InputOTPGroup"
 
 const InputOTPSlot = React.forwardRef<
   React.ElementRef<"div">,
-  React.ComponentPropsWithoutRef<"div"> & { index: number }
->(({ index, className, ...props }, ref) => {
+  React.ComponentPropsWithoutRef<"div"> & { index: number; masked?: boolean }
+>(({ index, className, masked = true, ...props }, ref) => {
   const inputOTPContext = React.useContext(OTPInputContext)
   const { char, hasFakeCaret, isActive } = inputOTPContext.slots[index]
 
@@ -39,16 +46,18 @@ const InputOTPSlot = React.forwardRef<
     <div
       ref={ref}
       className={cn(
-        "relative flex h-10 w-10 items-center justify-center border-y border-r border-input text-sm transition-all first:rounded-l-md first:border-l last:rounded-r-md",
-        isActive && "z-10 ring-2 ring-ring ring-offset-background",
+        "relative flex h-12 w-12 items-center justify-center border-y border-r border-cyan-400 text-lg font-bold text-cyan-300 transition-all first:rounded-l-md first:border-l last:rounded-r-md",
+        isActive && "z-10 ring-2 ring-cyan-400 ring-offset-2",
         className
       )}
+      aria-label={`Digit ${index + 1}`}
       {...props}
     >
-      {char}
+      {/* Masked display unless explicitly overridden */}
+      {char ? (masked ? "•" : char) : ""}
       {hasFakeCaret && (
         <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-          <div className="h-4 w-px animate-caret-blink bg-foreground duration-1000" />
+          <div className="h-4 w-px motion-safe:animate-caret-blink bg-cyan-400 duration-1000" />
         </div>
       )}
     </div>
@@ -60,10 +69,11 @@ const InputOTPSeparator = React.forwardRef<
   React.ElementRef<"div">,
   React.ComponentPropsWithoutRef<"div">
 >(({ ...props }, ref) => (
-  <div ref={ref} role="separator" {...props}>
-    <Dot />
+  <div ref={ref} role="separator" aria-hidden="true" {...props}>
+    <Dot className="text-cyan-500" />
   </div>
 ))
 InputOTPSeparator.displayName = "InputOTPSeparator"
 
 export { InputOTP, InputOTPGroup, InputOTPSlot, InputOTPSeparator }
+
